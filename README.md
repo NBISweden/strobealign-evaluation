@@ -36,12 +36,8 @@ See the Supplementary Information in that paper, section
 
 Here, we only use the first 1 million reads of each simulated dataset.
 
-NOTE/TODO: The `Snakefile` included here exactly reproduces the steps for
-creating the simulated data, *except* that it only creates 1 million reads
-from the start instead of creating 10 million and taking the first 1 million.
-Since read simulation with mason is slow, this saves a lot of time,
-but because the set of simulated reads depends on the input parameters,
-the actual reads are different.
+The included snakemake workflow (see `Snakefile`) attempts to re-create the
+simulated datasets (but see the notes below).
 
 
 ## Running the min/max evaluation
@@ -51,22 +47,33 @@ the actual reads are different.
     conda activate strobealign-eval
     snakemake -c 0
 
+The final results are in `table.tex`.
 
-# min/max evaluation
+
+## Issues
+
+* `mason_variator` may fail with this error when running on maize or CHM13:
+
+      /home/osboxes/seqan/apps/mason2/mason_variator.cpp:1161
+      Assertion failed : snpRecord.getPos() != svRecord.getPos()
+      should be true but was 0 (Should be generated non-overlapping (snp pos = 229421492, sv pos = 229421492).)
+
+  This can be solved by using a self-compiled version of mason without assertions.
+
+* The `Snakefile` included here exactly reproduces the steps for
+  creating the simulated data, *except* that it only creates 1 million reads
+  from the start instead of creating 10 million and taking the first 1 million.
+  Since read simulation with mason is slow, this saves a lot of time,
+  but because the set of simulated reads depends on the input parameters,
+  the actual reads are different.
 
 
-Strobealign commits used are:
+## Commits
+
+The strobealign commits used are:
 
 - min: https://github.com/ksahlin/strobealign/commit/3223dc5946d9f38814e25a25149548dd146cc8d0 (original)
 - max: https://github.com/ksahlin/strobealign/commit/6a837431f29fc3be3c3a74bea507538d9ea5abe7 (tag: min-max)
-
-
-The evaluation compares the results to BWA-MEM.
-
-
-## Running
-
-...
 
 
 ## Rules for combining reads
