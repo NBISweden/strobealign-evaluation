@@ -1,9 +1,7 @@
 N_READS = 1_000_000
 
-# GENOMES = ("drosophila", "maize", "CHM13", "rye")
-# READ_LENGTHS = (50, 75, 100, 150, 200, 300, 500)
-GENOMES = ("drosophila", "maize", "CHM13")
-READ_LENGTHS = (50, 100, 200)
+GENOMES = ("drosophila", "maize", "CHM13", "rye")
+READ_LENGTHS = (50, 75, 100, 150, 200, 300, 500)
 
 DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=READ_LENGTHS)
 
