@@ -4,7 +4,9 @@ GENOMES = ("drosophila", "maize", "CHM13", "rye")
 READ_LENGTHS = (50, 75, 100, 150, 200, 300, 500)
 
 DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=READ_LENGTHS)
+ENDS = ("pe", "se")
 
+# Strobealign commits
 COMMITS = {
     "min": "3223dc5946d9f38814e25a25149548dd146cc8d0",  # original
     "max": "6a837431f29fc3be3c3a74bea507538d9ea5abe7",
@@ -207,6 +209,22 @@ rule run_strobealign_paired_end:
         "\n mv -v {output.bam}.tmp.bam {output.bam}"
         "\n mv -v {log}.tmp {log}"
 
+rule run_strobealign_single_end:
+    output:
+        bam="strobealign-{program,(min|max)}/{genome}-{read_length}/se.bam"
+    input:
+        fasta="genomes/{genome}.fa",
+        r1_fastq="datasets/{genome}-{read_length}/1.fastq.gz",
+    threads: 20
+    log:
+        "strobealign-{program}/{genome}-{read_length}/pe.bam.log"
+    shell:
+        "/usr/bin/time -v bin/strobealign-{wildcards.program} -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp"
+        " | grep -v '^@PG'"
+        " | samtools view --no-PG -o {output.bam}.tmp.bam -"
+        "\n mv -v {output.bam}.tmp.bam {output.bam}"
+        "\n mv -v {log}.tmp {log}"
+
 rule combine_strobealign_min_max:
     output:
         bam="strobealign-combined/{dataset}/{ends}.bam"
@@ -231,16 +249,12 @@ rule get_accuracy:
         "\n mv -v {output.txt}.tmp {output.txt}"
 
 
-
-
 def read_accuracy(path) -> float:
     with open(path) as f:
         line = next(iter(f))
     fields = line.split()
     return float(fields[1])
 
-
-# TODO se!
 
 rule accuracy_table:
     output:
@@ -250,11 +264,11 @@ rule accuracy_table:
             "{program}/{dataset}/accuracy.{ends}.txt",
             program=("bwamem", "strobealign-min", "strobealign-max", "strobealign-combined"),
             dataset=DATASETS,
-            ends=("pe", )
+            ends=ENDS,
         )
     run:
         with open(output.tex, "w") as f:
-            for ends in ("pe", ): #"se"):
+            for ends in ENDS:
                 title = "Single-end" if ends == "se" else "Paired-end"
                 print(f"\n# {title}", file=f)
                 print(r"\begin{tabular}{lrrrr}", file=f)
