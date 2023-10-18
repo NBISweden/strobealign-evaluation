@@ -1,8 +1,8 @@
-N_READS = 10_000
+N_READS = 1_000_000
 
 # GENOMES = ("drosophila", "maize", "CHM13", "rye")
 # READ_LENGTHS = (50, 75, 100, 150, 200, 300, 500)
-GENOMES = ("drosophila", "maize")
+GENOMES = ("drosophila", "maize", "CHM13")
 READ_LENGTHS = (50, 100, 200)
 
 DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=READ_LENGTHS)
@@ -13,8 +13,7 @@ COMMITS = {
 }
 
 rule:
-    input:
-        expand("bwamem/{dataset}/accuracy.{ends}.txt", dataset=DATASETS, ends=("se", "pe"))
+    input: "table.tex"
 
 
 # Download genomes
@@ -173,7 +172,7 @@ rule map_bwa_mem_paired_end:
         "\n mv -v {log}.tmp {log}"
 
 
-# Run the two versions of strobealign
+# Compile and run the two versions of strobealign
 
 rule compile_strobealign:
     output: "bin/strobealign-{name}"
@@ -193,17 +192,92 @@ rule compile_strobealign:
         rm -rf strobealign-{params.commit}
         """
 
-#
+rule run_strobealign_paired_end:
+    output:
+        bam="strobealign-{program,(min|max)}/{genome}-{read_length}/pe.bam"
+    input:
+        fasta="genomes/{genome}.fa",
+        r1_fastq="datasets/{genome}-{read_length}/1.fastq.gz",
+        r2_fastq="datasets/{genome}-{read_length}/2.fastq.gz",
+    threads: 20
+    log:
+        "strobealign-{program}/{genome}-{read_length}/pe.bam.log"
+    shell:
+        "/usr/bin/time -v bin/strobealign-{wildcards.program} -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
+        " | grep -v '^@PG'"
+        " | samtools view --no-PG -o {output.bam}.tmp.bam -"
+        "\n mv -v {output.bam}.tmp.bam {output.bam}"
+        "\n mv -v {log}.tmp {log}"
+
+rule combine_strobealign_min_max:
+    output:
+        bam="strobealign-combined/{dataset}/{ends}.bam"
+    input:
+        bam1="strobealign-min/{dataset}/{ends}.bam",
+        bam2="strobealign-max/{dataset}/{ends}.bam"
+    params:
+        extra=lambda wildcards: "-s" if wildcards.ends == "se" else ""
+    shell:
+        "python combine.py {params.extra} --output {output.bam} {input.bam1} {input.bam2}"
+
+# Accuracy for all programs
 
 rule get_accuracy:
     output:
-        txt="bwamem/{genome}-{read_length}/accuracy.{ends}.txt"
+        txt="{program}/{genome}-{read_length}/accuracy.{ends}.txt"
     input:
         truth="datasets/{genome}-{read_length}/truth.{ends}.bam",
-        bam="bwamem/{genome}-{read_length}/{ends}.bam"
+        bam="{program}/{genome}-{read_length}/{ends}.bam"
     shell:
         "python get_accuracy.py --truth {input.truth} --predicted_sam {input.bam} > {output.txt}.tmp"
         "\n mv -v {output.txt}.tmp {output.txt}"
+
+
+
+
+def read_accuracy(path) -> float:
+    with open(path) as f:
+        line = next(iter(f))
+    fields = line.split()
+    return float(fields[1])
+
+
+# TODO se!
+
+rule accuracy_table:
+    output:
+        tex="table.tex"
+    input:
+        expand(
+            "{program}/{dataset}/accuracy.{ends}.txt",
+            program=("bwamem", "strobealign-min", "strobealign-max", "strobealign-combined"),
+            dataset=DATASETS,
+            ends=("pe", )
+        )
+    run:
+        with open(output.tex, "w") as f:
+            for ends in ("pe", ): #"se"):
+                title = "Single-end" if ends == "se" else "Paired-end"
+                print(f"\n# {title}", file=f)
+                print(r"\begin{tabular}{lrrrr}", file=f)
+                print(r"dataset &     min &     max & combined& combined minus min & BWA minus combined\\", file=f)
+                for dataset in DATASETS:
+                    accuracies = {
+                        program: read_accuracy(f"{program}/{dataset}/accuracy.{ends}.txt")
+                        for program in ("bwamem", "strobealign-min", "strobealign-max", "strobealign-combined")
+                    }
+                    delta = accuracies["strobealign-combined"] - accuracies["strobealign-min"]
+                    bwa_delta = accuracies["bwamem"] - accuracies["strobealign-combined"]
+                    print(
+                        f"{dataset:>14s} & "
+                        f"{accuracies['strobealign-min']:.4f} & "
+                        f"{accuracies['strobealign-max']:.4f} & "
+                        f"{accuracies['strobealign-combined']:.4f} & "
+                        f"{delta:+.4f} & "
+                        f"{bwa_delta:+.4f}\\\\",
+                        file=f
+                    )
+                print("\\end{tabular}", file=f)
 
 
 # Misc
