@@ -85,7 +85,7 @@ We have not made this modification as it adds hundreds of CPU hours for little g
 
     conda env create --file environment.yml
     conda activate strobealign-eval
-    snakemake -c 0
+    snakemake --cores=all
 
 The final results are in `table.tex`.
 
