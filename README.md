@@ -33,6 +33,8 @@ It does the following:
 - Compute accuracy
 - Create the result table in LaTeX format (see `table.tex`)
 
+A pre-computed output file is provided in `precomputed-table.tex`.
+
 
 ## Datasets
 
@@ -88,6 +90,7 @@ We have not made this modification as it adds hundreds of CPU hours for little g
     snakemake --cores=all
 
 The final results are in `table.tex`.
+The file should be identical to the provided `precomputed-table.tex`.
 
 
 ## Issues
