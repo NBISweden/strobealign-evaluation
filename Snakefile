@@ -120,7 +120,7 @@ rule single_end_truth:
     input:
         bam="datasets/{dataset}/truth.pe.bam"
     shell:
-        "samtools view -f 64 --remove-flags 239 -o {output.bam} {input.bam}"
+        "samtools view -f 64 --remove-flags 235 -o {output.bam} {input.bam}"
 
 
 # Map reads with BWA-MEM
