@@ -1,39 +1,16 @@
-# Strobealign min/max evaluation
+# Strobealign evaluation
 
-This repository documents how to reproduce the min/max evaluation experiments
-in the paper
+This repository provides a runnable workflow for evaluating
+[strobealign](https://github.com/ksahlin/strobealign/).
+
+To reproduce the min/max evaluation experiments in the paper
 
 "Designing efficient randstrobes for sequence similarity
 analyses" by Karami et al., 2023.
 
-(See "Implementing c_max in strobealign" in the appendix of that
-paper.)
+use [commit 5b26d727489b2b0c2177cac7a4f6e1193e1586bd](https://github.com/NBISweden/strobealign-evaluation/commit/5b26d727489b2b0c2177cac7a4f6e1193e1586bd).
 
-
-## Summary
-
-To create a randstrobe, a syncmer is combined with a second one downstream.
-This is done in a pseudorandom way by applying a function to the two syncmers
-and choosing the combination that *minimizes* the output of that function.
-An alternative is to *maximize* the function, but that gives similar results.
-
-Here, we test what happens when running both the min and max version
-and combining the results.
-
-The provided snakemake workflow (`Snakefile`) runs the evaluation "from scratch",
-that is, no further input files need to be provided.
-
-It does the following:
-- Download genome reference files
-- Simulate reads (using mason)
-- Map reads with BWA-MEM
-- Download and compile the two "min" and "max" strobealign versions
-- Map reads with the two strobealign versions
-- Combine min and max results
-- Compute accuracy
-- Create the result table in LaTeX format (see `table.tex`)
-
-A pre-computed output file is provided in `precomputed-table.tex`.
+See "Implementing c_max in strobealign" in the appendix of that paper.
 
 
 ## Datasets
@@ -53,6 +30,20 @@ The datasets are the simulated drosophila, maize, CHM13 and rye reads
 See also the original snakemake workflow file that documents the evaluation done
 for the Genome Biology paper:
 https://github.com/ksahlin/alignment_evaluation/blob/master/evaluation/Snakefile
+
+
+### *E. coli* pangenome
+
+In addition to the genomes listed above, an *E. coli* pangenome has been added
+consisting of 50 randomly selected *E. coli* assemblies from RefSeq.
+Because RefSeq changes, querying it is not reproducible.
+Therefore, a pre-generated list of 100 *E. coli* assembly accessions
+can be found in `ecoli-accessions.txt`.
+It was generated in the following way:
+
+    ncbi-genome-download --dry-run --assembly-levels complete --taxid 562 bacteria | sed 1d | cut -f1 | shuf | head -n 100 > ecoli-accessions.txt
+
+The `ecoli50` datasets uses the first 50 accessions from that list.
 
 
 ### The number of reads has been reduced
@@ -82,6 +73,33 @@ To get the results to match exactly:
 We have not made this modification as it adds hundreds of CPU hours for little gain.
 
 
+# Strobealign min/max evaluation
+
+To create a randstrobe, a syncmer is combined with a second one downstream.
+This is done in a pseudorandom way by applying a function to the two syncmers
+and choosing the combination that *minimizes* the output of that function.
+An alternative is to *maximize* the function, but that gives similar results.
+
+Here, we test what happens when running both the min and max version
+and combining the results.
+
+The provided snakemake workflow (`Snakefile`) runs the evaluation "from scratch",
+that is, no further input files need to be provided.
+
+It does the following:
+- Download genome reference files
+- Simulate reads (using mason)
+- Map reads with BWA-MEM
+- Download and compile the two "min" and "max" strobealign versions
+- Map reads with the two strobealign versions
+- Combine min and max results
+- Compute accuracy
+- Create the result table in LaTeX format (see `table.tex`)
+
+A pre-computed output file is provided in `precomputed-table.tex`.
+
+
+
 ## Running the min/max evaluation
 
 
@@ -102,7 +120,6 @@ The file should be identical to the provided `precomputed-table.tex`.
       should be true but was 0 (Should be generated non-overlapping (snp pos = 229421492, sv pos = 229421492).)
 
   This can be solved by using a self-compiled version of mason without assertions.
-
 
 
 ## Commits

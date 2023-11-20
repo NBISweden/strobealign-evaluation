@@ -1,6 +1,6 @@
 N_READS = 1_000_000
 
-GENOMES = ("drosophila", "maize", "CHM13", "rye")
+GENOMES = ("drosophila", "maize", "CHM13", "rye", "ecoli50")
 READ_LENGTHS = (50, 75, 100, 150, 200, 300, 500)
 
 DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=READ_LENGTHS)
@@ -37,6 +37,23 @@ rule download_rye:
     output: "downloads/GCA_016097815.1_HAU_Weining_v1.0_genomic.fna.gz"
     shell:
         "curl https://ftp.ncbi.nlm.nih.gov/genomes/genbank/plant/Secale_cereale/latest_assembly_versions/GCA_016097815.1_HAU_Weining_v1.0/GCA_016097815.1_HAU_Weining_v1.0_genomic.fna.gz > {output}"
+
+rule download_ecoli50:
+    output:
+        "downloads/ecoli50/done.txt"
+    input: "ecoli-accessions.txt"
+    shell:
+        "mkdir -p downloads/ecoli50; "
+        "head -n 50 ecoli-accessions.txt > downloads/ecoli50/accessions.txt; "
+        "ncbi-genome-download -o downloads/ecoli50 -A downloads/ecoli50/accessions.txt --formats fasta --flat-output bacteria; "
+        "touch downloads/ecoli50/done.txt"
+
+rule filter_ecoli50:
+    output: "genomes/ecoli50.fa"
+    input: "downloads/ecoli50/done.txt"
+    shell:
+        "python noplasmids.py downloads/ecoli50/*.fna.gz > {output}"
+
 
 # Uncompress and filter downloaded genomes
 
@@ -120,7 +137,7 @@ rule single_end_truth:
     input:
         bam="datasets/{dataset}/truth.pe.bam"
     shell:
-        "samtools view -f 64 --remove-flags 239 -o {output.bam} {input.bam}"
+        "samtools view -f 64 --remove-flags 235 -o {output.bam} {input.bam}"
 
 
 # Map reads with BWA-MEM
