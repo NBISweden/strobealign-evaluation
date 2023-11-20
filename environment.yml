@@ -3,10 +3,12 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
+  - ncbi-genome-download
   - mason=2.0.9
   - snakemake-minimal=7
   - python=3.10
   - pysam=0.22
+  - dnaio
   - bwa=0.7.17
   - samtools=1.18
   - cmake=3.27
