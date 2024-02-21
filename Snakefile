@@ -1,3 +1,9 @@
+# Snakefile for generating the input datasets.
+# It downloads reference FASTAs and simulates reads from them.
+#
+# This creates the downloads/, datasets/ and genomes/ directories.
+# (downloads/ can be deleted.)
+
 N_READS = 1_000_000
 
 GENOMES = ("drosophila", "maize", "CHM13", "rye", "ecoli50")
@@ -6,15 +12,11 @@ READ_LENGTHS = (50, 75, 100, 150, 200, 300, 500)
 DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=READ_LENGTHS)
 ENDS = ("pe", "se")
 
-# Strobealign commits
-COMMITS = {
-    "min": "3223dc5946d9f38814e25a25149548dd146cc8d0",  # original
-    "max": "6a837431f29fc3be3c3a74bea507538d9ea5abe7",
-}
 
 rule:
-    input: "table.tex"
-
+    input:
+        expand("datasets/{ds}/{r}.fastq.gz", ds=DATASETS, r=(1, 2)),
+        expand("datasets/{ds}/truth.{ends}.bam", ds=DATASETS, ends=("se", "pe"))
 
 # Download genomes
 
@@ -138,175 +140,6 @@ rule single_end_truth:
         bam="datasets/{dataset}/truth.pe.bam"
     shell:
         "samtools view -f 64 --remove-flags 235 -o {output.bam} {input.bam}"
-
-
-# Map reads with BWA-MEM
-
-rule bwa_index:
-    output:
-        "{genome}.fa.amb",
-        "{genome}.fa.ann",
-        "{genome}.fa.bwt",
-        "{genome}.fa.pac",
-        "{genome}.fa.sa"
-    input: "{genome}.fa"
-    shell:
-        "bwa index {input}"
-
-rule map_bwa_mem_single_end:
-    output:
-        bam="bwamem/{genome}-{read_length}/se.bam"
-    input:
-        fasta="genomes/{genome}.fa",
-        index="genomes/{genome}.fa.bwt",
-        r1_fastq="datasets/{genome}-{read_length}/1.fastq.gz",
-    threads: 20
-    log:
-        "bwamem/{genome}-{read_length}/se.bam.log"
-    shell:
-        "/usr/bin/time -v bwa mem -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp"
-        " | grep -v '^@PG'"
-        " | samtools view --no-PG -o {output.bam}.tmp.bam -"
-        "\n mv -v {output.bam}.tmp.bam {output.bam}"
-        "\n mv -v {log}.tmp {log}"
-
-rule map_bwa_mem_paired_end:
-    output:
-        bam="bwamem/{genome}-{read_length}/pe.bam"
-    input:
-        fasta="genomes/{genome}.fa",
-        index="genomes/{genome}.fa.bwt",
-        r1_fastq="datasets/{genome}-{read_length}/1.fastq.gz",
-        r2_fastq="datasets/{genome}-{read_length}/2.fastq.gz",
-    threads: 20
-    log:
-        "bwamem/{genome}-{read_length}/pe.bam.log"
-    shell:
-        "/usr/bin/time -v bwa mem -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
-        " | grep -v '^@PG'"
-        " | samtools view --no-PG -o {output.bam}.tmp.bam -"
-        "\n mv -v {output.bam}.tmp.bam {output.bam}"
-        "\n mv -v {log}.tmp {log}"
-
-
-# Compile and run the two versions of strobealign
-
-rule compile_strobealign:
-    output: "bin/strobealign-{name}"
-    params:
-        commit=lambda wildcards: COMMITS[wildcards.name]
-    threads: 20
-    shell:
-        """
-        wget https://github.com/ksahlin/strobealign/archive/{params.commit}.zip
-        unzip {params.commit}.zip
-        rm {params.commit}.zip
-        cd strobealign-{params.commit}
-        cmake -B build -DCMAKE_C_FLAGS="-march=native" -DCMAKE_CXX_FLAGS="-march=native"
-        make -j {threads} -C build strobealign
-        mv build/strobealign ../{output}
-        cd ..
-        rm -rf strobealign-{params.commit}
-        """
-
-rule run_strobealign_paired_end:
-    output:
-        bam="strobealign-{program,(min|max)}/{genome}-{read_length}/pe.bam"
-    input:
-        fasta="genomes/{genome}.fa",
-        r1_fastq="datasets/{genome}-{read_length}/1.fastq.gz",
-        r2_fastq="datasets/{genome}-{read_length}/2.fastq.gz",
-    threads: 20
-    log:
-        "strobealign-{program}/{genome}-{read_length}/pe.bam.log"
-    shell:
-        "/usr/bin/time -v bin/strobealign-{wildcards.program} -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
-        " | grep -v '^@PG'"
-        " | samtools view --no-PG -o {output.bam}.tmp.bam -"
-        "\n mv -v {output.bam}.tmp.bam {output.bam}"
-        "\n mv -v {log}.tmp {log}"
-
-rule run_strobealign_single_end:
-    output:
-        bam="strobealign-{program,(min|max)}/{genome}-{read_length}/se.bam"
-    input:
-        fasta="genomes/{genome}.fa",
-        r1_fastq="datasets/{genome}-{read_length}/1.fastq.gz",
-    threads: 20
-    log:
-        "strobealign-{program}/{genome}-{read_length}/pe.bam.log"
-    shell:
-        "/usr/bin/time -v bin/strobealign-{wildcards.program} -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp"
-        " | grep -v '^@PG'"
-        " | samtools view --no-PG -o {output.bam}.tmp.bam -"
-        "\n mv -v {output.bam}.tmp.bam {output.bam}"
-        "\n mv -v {log}.tmp {log}"
-
-rule combine_strobealign_min_max:
-    output:
-        bam="strobealign-combined/{dataset}/{ends}.bam"
-    input:
-        bam1="strobealign-min/{dataset}/{ends}.bam",
-        bam2="strobealign-max/{dataset}/{ends}.bam"
-    params:
-        extra=lambda wildcards: "-s" if wildcards.ends == "se" else ""
-    shell:
-        "python combine.py {params.extra} --output {output.bam} {input.bam1} {input.bam2}"
-
-# Accuracy for all programs
-
-rule get_accuracy:
-    output:
-        txt="{program}/{genome}-{read_length}/accuracy.{ends}.txt"
-    input:
-        truth="datasets/{genome}-{read_length}/truth.{ends}.bam",
-        bam="{program}/{genome}-{read_length}/{ends}.bam"
-    shell:
-        "python get_accuracy.py --truth {input.truth} --predicted_sam {input.bam} > {output.txt}.tmp"
-        "\n mv -v {output.txt}.tmp {output.txt}"
-
-
-def read_accuracy(path) -> float:
-    with open(path) as f:
-        line = next(iter(f))
-    fields = line.split()
-    return float(fields[1])
-
-
-rule accuracy_table:
-    output:
-        tex="table.tex"
-    input:
-        expand(
-            "{program}/{dataset}/accuracy.{ends}.txt",
-            program=("bwamem", "strobealign-min", "strobealign-max", "strobealign-combined"),
-            dataset=DATASETS,
-            ends=ENDS,
-        )
-    run:
-        with open(output.tex, "w") as f:
-            for ends in ENDS:
-                title = "Single-end" if ends == "se" else "Paired-end"
-                print(f"\n# {title}", file=f)
-                print(r"\begin{tabular}{lrrrr}", file=f)
-                print(r"dataset &     min &     max & combined& combined minus min & BWA minus combined\\", file=f)
-                for dataset in DATASETS:
-                    accuracies = {
-                        program: read_accuracy(f"{program}/{dataset}/accuracy.{ends}.txt")
-                        for program in ("bwamem", "strobealign-min", "strobealign-max", "strobealign-combined")
-                    }
-                    delta = accuracies["strobealign-combined"] - accuracies["strobealign-min"]
-                    bwa_delta = accuracies["bwamem"] - accuracies["strobealign-combined"]
-                    print(
-                        f"{dataset:>14s} & "
-                        f"{accuracies['strobealign-min']:.4f} & "
-                        f"{accuracies['strobealign-max']:.4f} & "
-                        f"{accuracies['strobealign-combined']:.4f} & "
-                        f"{delta:+.4f} & "
-                        f"{bwa_delta:+.4f}\\\\",
-                        file=f
-                    )
-                print("\\end{tabular}", file=f)
 
 
 # Misc

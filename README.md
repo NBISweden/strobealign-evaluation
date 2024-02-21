@@ -15,7 +15,8 @@ See "Implementing c_max in strobealign" in the appendix of that paper.
 
 ## Datasets
 
-The datasets used here are based on the datasets created for the following paper:
+The simulated datasets generated and used here are created in the same way as
+the datasets for the following paper:
 
 Sahlin, K. Strobealign:
 flexible seed size enables ultra-fast and accurate read alignment.
@@ -99,16 +100,24 @@ It does the following:
 A pre-computed output file is provided in `precomputed-table.tex`.
 
 
-
 ## Running the min/max evaluation
 
+Makes the required software available:
 
     conda env create --file environment.yml
     conda activate strobealign-eval
+
+Download the genomes and simulate reads:
+
     snakemake --cores=all
 
-The final results are in `table.tex`.
-The file should be identical to the provided `precomputed-table.tex`.
+Run the actual min/max evaluation:
+
+    cd minmax
+    snakemake --cores=all
+
+The final results are in `minmax/table.tex`.
+The file should be identical to the provided `minmax/precomputed-table.tex`.
 
 
 ## Issues
