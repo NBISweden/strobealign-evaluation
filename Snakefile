@@ -12,11 +12,17 @@ READ_LENGTHS = (50, 75, 100, 150, 200, 300, 500)
 DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=READ_LENGTHS)
 ENDS = ("pe", "se")
 
+VARIATION_SETTINGS = {
+    "sim3": "--sv-indel-rate 0.000005 --snp-rate 0.001 --small-indel-rate 0.0001 --max-small-indel-size 50",
+    "sim5": "--sv-indel-rate 0.00002 --snp-rate 0.005 --small-indel-rate 0.001 --max-small-indel-size 100",
+}
+SIM = list(VARIATION_SETTINGS)
+
 
 rule:
     input:
-        expand("datasets/{ds}/{r}.fastq.gz", ds=DATASETS, r=(1, 2)),
-        expand("datasets/{ds}/truth.{ends}.bam", ds=DATASETS, ends=("se", "pe"))
+        expand("datasets/{sim}/{ds}/{r}.fastq.gz", sim=SIM, ds=DATASETS, r=(1, 2)),
+        expand("datasets/{sim}/{ds}/truth.{ends}.bam", sim=SIM, ds=DATASETS, ends=ENDS)
 
 # Download genomes
 
@@ -106,19 +112,21 @@ rule filter_rye:
 
 rule mason_variator:
     output:
-        vcf="variations/{genome}.vcf"
+        vcf="variations/{sim}-{genome}.vcf"
     input:
         fasta="genomes/{genome}.fa",
         fai="genomes/{genome}.fa.fai"
+    params:
+        variation_settings=lambda wildcards: VARIATION_SETTINGS[wildcards.sim]
     shell:
-        "mason_variator -ir {input.fasta} --sv-indel-rate 0.000005 --snp-rate 0.001 --small-indel-rate 0.0001 --max-small-indel-size 50 -ov {output.vcf}.tmp.vcf"
+        "mason_variator -ir {input.fasta} {params.variation_settings} -ov {output.vcf}.tmp.vcf"
         "\n mv -v {output.vcf}.tmp.vcf {output.vcf}"
 
 rule mason_simulator:
     output:
-        r1_fastq="datasets/{genome}-{read_length}/1.fastq.gz",
-        r2_fastq="datasets/{genome}-{read_length}/2.fastq.gz",
-        sam="datasets/{genome}-{read_length}/truth.pe.bam"
+        r1_fastq="datasets/{sim}/{genome}-{read_length}/1.fastq.gz",
+        r2_fastq="datasets/{sim}/{genome}-{read_length}/2.fastq.gz",
+        sam="datasets/{sim}/{genome}-{read_length}/truth.pe.bam"
     input:
         fasta="genomes/{genome}.fa",
         vcf=rules.mason_variator.output.vcf
