@@ -115,11 +115,12 @@ rule mason_variator:
         vcf="variations/{sim}-{genome}.vcf"
     input:
         fasta="genomes/{genome}.fa",
-        fai="genomes/{genome}.fa.fai"
+        fai="genomes/{genome}.fa.fai",
+        mason_variator="bin/mason_variator"
     params:
         variation_settings=lambda wildcards: VARIATION_SETTINGS[wildcards.sim]
     shell:
-        "mason_variator -ir {input.fasta} {params.variation_settings} -ov {output.vcf}.tmp.vcf"
+        "{input.mason_variator} -ir {input.fasta} {params.variation_settings} -ov {output.vcf}.tmp.vcf"
         "\n mv -v {output.vcf}.tmp.vcf {output.vcf}"
 
 rule mason_simulator:
@@ -129,13 +130,15 @@ rule mason_simulator:
         sam="datasets/{sim}/{genome}-{read_length}/truth.pe.bam"
     input:
         fasta="genomes/{genome}.fa",
-        vcf=rules.mason_variator.output.vcf
+        vcf=rules.mason_variator.output.vcf,
+        mason_simulator="bin/mason_simulator"
     run:
         extra = ""
         if wildcards.read_length in {"250", "300", "500"}:
             extra="--fragment-mean-size 700"
         shell(
-            "mason_simulator -ir {input.fasta} -n {N_READS} -iv {input.vcf} --illumina-read-length {wildcards.read_length} -o {output.r1_fastq}.tmp.fastq.gz -or {output.r2_fastq}.tmp.fastq.gz -oa {output.sam}.tmp.bam {extra}"
+            "ulimit -n 65536"  # Avoid "Uncaught exception of type MasonIOException: Could not open right/single-end output file."
+            "\n {input.mason_simulator} -ir {input.fasta} -n {N_READS} -iv {input.vcf} --illumina-read-length {wildcards.read_length} -o {output.r1_fastq}.tmp.fastq.gz -or {output.r2_fastq}.tmp.fastq.gz -oa {output.sam}.tmp.bam {extra}"
             "\n mv -v {output.r1_fastq}.tmp.fastq.gz {output.r1_fastq}"
             "\n mv -v {output.r2_fastq}.tmp.fastq.gz {output.r2_fastq}"
             "\n mv -v {output.sam}.tmp.bam {output.sam}"
@@ -156,3 +159,16 @@ rule samtools_faidx:
     output: "{genome}.fa.fai"
     input: "{genome}.fa"
     shell: "samtools faidx {input}"
+
+
+# Build our own Mason binaries because the one from Conda crashes
+rule build_mason:
+    output: "bin/mason_variator", "bin/mason_simulator"
+    threads: 99
+    shell:
+        "git clone https://github.com/seqan/seqan.git"
+        "; ( cd seqan && git checkout db5e0ce7e0b7946ff5d1ca22e652faa0b5b9603c )"
+        "; cmake -DSEQAN_BUILD_SYSTEM=APP:mason2 -B build-seqan seqan"
+        "; make -s -C build-seqan -j {threads}"
+        "; mv build-seqan/bin/mason_simulator build-seqan/bin/mason_variator bin/"
+        #"; rm -r seqan"

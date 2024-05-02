@@ -4,7 +4,7 @@ channels:
   - bioconda
 dependencies:
   - ncbi-genome-download
-  - mason=2.0.9
+  # - mason=2.0.9 # we compile a more recent version to avoid some crashes
   - snakemake-minimal=7
   - python=3.10
   - pysam=0.22
