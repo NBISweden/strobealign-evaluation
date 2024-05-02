@@ -137,7 +137,7 @@ rule mason_simulator:
         if wildcards.read_length in {"250", "300", "500"}:
             extra="--fragment-mean-size 700"
         shell(
-            "ulimit -n 65536"  # Avoid "Uncaught exception of type MasonIOException: Could not open right/single-end output file."
+            "ulimit -n 16384"  # Avoid "Uncaught exception of type MasonIOException: Could not open right/single-end output file."
             "\n {input.mason_simulator} -ir {input.fasta} -n {N_READS} -iv {input.vcf} --illumina-read-length {wildcards.read_length} -o {output.r1_fastq}.tmp.fastq.gz -or {output.r2_fastq}.tmp.fastq.gz -oa {output.sam}.tmp.bam {extra}"
             "\n mv -v {output.r1_fastq}.tmp.fastq.gz {output.r1_fastq}"
             "\n mv -v {output.r2_fastq}.tmp.fastq.gz {output.r2_fastq}"
