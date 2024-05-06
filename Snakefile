@@ -19,6 +19,9 @@ VARIATION_SETTINGS = {
 SIM = list(VARIATION_SETTINGS)
 
 
+localrules:
+    download_drosophila, download_maize, download_chm13, download_rye, download_ecoli50, filter_ecoli50, filter_drosophila, clone_seqan
+
 rule:
     input:
         expand("datasets/{sim}/{ds}/{r}.fastq.gz", sim=SIM, ds=DATASETS, r=(1, 2)),
@@ -162,13 +165,18 @@ rule samtools_faidx:
 
 
 # Build our own Mason binaries because the one from Conda crashes
+rule clone_seqan:
+    output: "seqan/cloned"
+    shell:
+        "git clone --branch db5e0ce7e0b7946ff5d1ca22e652faa0b5b9603c https://github.com/seqan/seqan.git"
+        "; touch seqan/cloned"
+
 rule build_mason:
     output: "bin/mason_variator", "bin/mason_simulator"
+    input: "seqan/cloned"
     threads: 99
     shell:
-        "git clone https://github.com/seqan/seqan.git"
-        "; ( cd seqan && git checkout db5e0ce7e0b7946ff5d1ca22e652faa0b5b9603c )"
-        "; cmake -DSEQAN_BUILD_SYSTEM=APP:mason2 -B build-seqan seqan"
+        "cmake -DSEQAN_BUILD_SYSTEM=APP:mason2 -B build-seqan seqan"
         "; make -s -C build-seqan -j {threads}"
         "; mv build-seqan/bin/mason_simulator build-seqan/bin/mason_variator bin/"
         #"; rm -r seqan"
