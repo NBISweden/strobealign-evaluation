@@ -126,6 +126,15 @@ rule mason_variator:
         "{input.mason_variator} -ir {input.fasta} {params.variation_settings} -ov {output.vcf}.tmp.vcf"
         "\n mv -v {output.vcf}.tmp.vcf {output.vcf}"
 
+
+def fragment_size(wildcards):
+    read_length = int(wildcards.read_length)
+    if read_length >= 250:
+        return " --fragment-mean-size 700"
+    else:
+        return ""
+
+
 rule mason_simulator:
     output:
         r1_fastq="datasets/{sim}/{genome}-{read_length}/1.fastq.gz",
@@ -135,17 +144,23 @@ rule mason_simulator:
         fasta="genomes/{genome}.fa",
         vcf=rules.mason_variator.output.vcf,
         mason_simulator="bin/mason_simulator"
-    run:
-        extra = ""
-        if wildcards.read_length in {"250", "300", "500"}:
-            extra="--fragment-mean-size 700"
-        shell(
-            "ulimit -n 16384"  # Avoid "Uncaught exception of type MasonIOException: Could not open right/single-end output file."
-            "\n {input.mason_simulator} -ir {input.fasta} -n {N_READS} -iv {input.vcf} --illumina-read-length {wildcards.read_length} -o {output.r1_fastq}.tmp.fastq.gz -or {output.r2_fastq}.tmp.fastq.gz -oa {output.sam}.tmp.bam {extra}"
-            "\n mv -v {output.r1_fastq}.tmp.fastq.gz {output.r1_fastq}"
-            "\n mv -v {output.r2_fastq}.tmp.fastq.gz {output.r2_fastq}"
-            "\n mv -v {output.sam}.tmp.bam {output.sam}"
-        )
+    params:
+        extra=fragment_size
+    shell:
+        "ulimit -n 16384"  # Avoid "Uncaught exception of type MasonIOException: Could not open right/single-end output file."
+        "\n{input.mason_simulator}"
+        " -ir {input.fasta}"
+        " -n {N_READS}"
+        " -iv {input.vcf}"
+        " --illumina-read-length {wildcards.read_length}"
+        "{params.extra}"
+        " -o {output.r1_fastq}.tmp.fastq.gz"
+        " -or {output.r2_fastq}.tmp.fastq.gz"
+        " -oa {output.sam}.tmp.bam"
+        "\nmv -v {output.r1_fastq}.tmp.fastq.gz {output.r1_fastq}"
+        "\nmv -v {output.r2_fastq}.tmp.fastq.gz {output.r2_fastq}"
+        "\nmv -v {output.sam}.tmp.bam {output.sam}"
+
 
 rule single_end_truth:
     output:
