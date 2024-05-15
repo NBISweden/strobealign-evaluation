@@ -146,6 +146,7 @@ rule mason_simulator:
         mason_simulator="bin/mason_simulator"
     params:
         extra=fragment_size
+    log: "logs/mason_simulator/{sim}-{genome}-{read_length}.log"
     shell:
         "ulimit -n 16384"  # Avoid "Uncaught exception of type MasonIOException: Could not open right/single-end output file."
         "\n{input.mason_simulator}"
@@ -157,6 +158,7 @@ rule mason_simulator:
         " -o {output.r1_fastq}.tmp.fastq.gz"
         " -or {output.r2_fastq}.tmp.fastq.gz"
         " -oa {output.sam}.tmp.bam"
+        " 2>&1 | tee {log}"
         "\nmv -v {output.r1_fastq}.tmp.fastq.gz {output.r1_fastq}"
         "\nmv -v {output.r2_fastq}.tmp.fastq.gz {output.r2_fastq}"
         "\nmv -v {output.sam}.tmp.bam {output.sam}"
