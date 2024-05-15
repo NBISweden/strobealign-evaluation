@@ -186,9 +186,16 @@ rule clone_seqan:
         "git clone --branch db5e0ce7e0b7946ff5d1ca22e652faa0b5b9603c https://github.com/seqan/seqan.git"
         "; touch seqan/cloned"
 
+rule patch_seqan:
+    output: "seqan/patched"
+    input: "seqan-hotfix.patch"
+    shell:
+        "patch -p1 -d seqan < {input}; "
+        "touch {output}"
+
 rule build_mason:
     output: "bin/mason_variator", "bin/mason_simulator"
-    input: "seqan/cloned"
+    input: "seqan/cloned", "seqan/patched"
     threads: 99
     shell:
         "cmake -DSEQAN_BUILD_SYSTEM=APP:mason2 -B build-seqan seqan"

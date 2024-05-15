@@ -1,0 +1,35 @@
+diff --git i/apps/mason2/genomic_variants.cpp w/apps/mason2/genomic_variants.cpp
+index 1e5e03a31..637268443 100644
+--- i/apps/mason2/genomic_variants.cpp
++++ w/apps/mason2/genomic_variants.cpp
+@@ -437,6 +437,13 @@ int VariantMaterializer::_materializeLargeVariants(
+         // Copy from contig to seq with SVs.
+         if (verbosity >= 3)
+             std::cerr << "lastPos == " << lastPos << "\n";
++
++        // workaround for BUG
++        if (lastPos > svRecord.pos) {
++            std::cerr << "BUGHOTFIX 1\n";
++            continue;
++        }
++
+         append(seq, infix(contig, lastPos, svRecord.pos));  // interim chars
+         if (methSimOptions && methSimOptions->simulateMethylationLevels)
+         {
+diff --git i/apps/mason2/mason_simulator.cpp w/apps/mason2/mason_simulator.cpp
+index 673dc5456..46389a74f 100644
+--- i/apps/mason2/mason_simulator.cpp
++++ w/apps/mason2/mason_simulator.cpp
+@@ -529,6 +529,12 @@ public:
+                            int & beginPos,
+                            int endPos)
+     {
++
++        if (beginPos > length(refSeq) || beginPos > endPos) {
++            std::cerr << "BUGHOTFIX 2\n";
++            endPos = beginPos = 0;
++        }
++
+         int const PADDING = 5;
+         int const PADDING_BEGIN = std::min(PADDING, beginPos);
+         int const PADDING_END = std::min(PADDING, (int)length(refSeq) - endPos);
