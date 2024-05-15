@@ -14,6 +14,7 @@ ENDS = ("pe", "se")
 
 VARIATION_SETTINGS = {
     "sim3": "--sv-indel-rate 0.000005 --snp-rate 0.001 --small-indel-rate 0.0001 --max-small-indel-size 50",
+    "sim4": "--sv-indel-rate 0.00001 --snp-rate 0.005 --small-indel-rate 0.0005 --max-small-indel-size 50",
     "sim5": "--sv-indel-rate 0.00002 --snp-rate 0.005 --small-indel-rate 0.001 --max-small-indel-size 100",
 }
 SIM = list(VARIATION_SETTINGS)
