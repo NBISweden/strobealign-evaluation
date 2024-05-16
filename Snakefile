@@ -128,12 +128,16 @@ rule mason_variator:
         "\n mv -v {output.vcf}.tmp.vcf {output.vcf}"
 
 
-def fragment_size(wildcards):
+def mason_simulator_parameters(wildcards):
     read_length = int(wildcards.read_length)
-    if read_length >= 250:
-        return " --fragment-mean-size 700"
+    if read_length == 500 and wildcards.sim == "sim5" and wildcards.genome == "drosophila":
+        # Workaround for crash with length 500
+        result = "--illumina-read-length 485"
     else:
-        return ""
+        result = f"--illumina-read-length {read_length}"
+    if read_length >= 250:
+        result += " --fragment-mean-size 700"
+    return result
 
 
 rule mason_simulator:
@@ -146,7 +150,7 @@ rule mason_simulator:
         vcf=rules.mason_variator.output.vcf,
         mason_simulator="bin/mason_simulator"
     params:
-        extra=fragment_size
+        extra=mason_simulator_parameters
     log: "logs/mason_simulator/{sim}-{genome}-{read_length}.log"
     shell:
         "ulimit -n 16384"  # Avoid "Uncaught exception of type MasonIOException: Could not open right/single-end output file."
@@ -154,8 +158,7 @@ rule mason_simulator:
         " -ir {input.fasta}"
         " -n {N_READS}"
         " -iv {input.vcf}"
-        " --illumina-read-length {wildcards.read_length}"
-        "{params.extra}"
+        " {params.extra}"
         " -o {output.r1_fastq}.tmp.fastq.gz"
         " -or {output.r2_fastq}.tmp.fastq.gz"
         " -oa {output.sam}.tmp.bam"
