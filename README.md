@@ -1,22 +1,21 @@
 # Strobealign evaluation
 
-This repository provides a runnable workflow for evaluating
+This repository provides runnable workflows for evaluating
 [strobealign](https://github.com/ksahlin/strobealign/).
 
-To reproduce the min/max evaluation experiments in the paper
+The following workflows are available:
 
-"Designing efficient randstrobes for sequence similarity
-analyses" by Karami et al., 2023.
-
-use [commit 5b26d727489b2b0c2177cac7a4f6e1193e1586bd](https://github.com/NBISweden/strobealign-evaluation/commit/5b26d727489b2b0c2177cac7a4f6e1193e1586bd).
-
-See "Implementing c_max in strobealign" in the appendix of that paper.
+- `Snakefile`: Downloads reference genomes and generates libraries of simulated
+  reads
+- `minmax/Snakefile`: Reproduces the min/max evaluation experiments in the paper
+  "Designing efficient randstrobes for sequence similarity
+  analyses" by Karami et al., 2023. (see `minmax/README.md`)
 
 
 ## Datasets
 
-The simulated datasets generated and used here are created in the same way as
-the datasets for the following paper:
+The simulated datasets generated and used here are created in mostly
+the same way as the datasets for the following paper:
 
 Sahlin, K. Strobealign:
 flexible seed size enables ultra-fast and accurate read alignment.
@@ -25,17 +24,22 @@ https://doi.org/10.1186/s13059-022-02831-7
 
 See the Supplementary Information in that paper, section
 "Note A: Simulations" for a description.
-The datasets are the simulated drosophila, maize, CHM13 and rye reads
-(these use the "SIM3" parameter settings for the read simulator).
 
 See also the original snakemake workflow file that documents the evaluation done
-for the Genome Biology paper:
+for the paper:
 https://github.com/ksahlin/alignment_evaluation/blob/master/evaluation/Snakefile
+
+Some differences:
+- The paper mentions SIM3 and SIM4 datasets. We added a SIM5 dataset with high
+  variability.
+- The genomes in the paper are drosophila, maize, CHM13, rye. We added an
+  E. coli pangenome (see below).
+- The number of reads per library has been reduced to 1 million.
 
 
 ### *E. coli* pangenome
 
-In addition to the genomes listed above, an *E. coli* pangenome has been added
+As fifth reference, an *E. coli* pangenome has been added
 consisting of 50 randomly selected *E. coli* assemblies from RefSeq.
 Because RefSeq changes, querying it is not reproducible.
 Therefore, a pre-generated list of 100 *E. coli* assembly accessions
@@ -74,33 +78,7 @@ To get the results to match exactly:
 We have not made this modification as it adds hundreds of CPU hours for little gain.
 
 
-# Strobealign min/max evaluation
-
-To create a randstrobe, a syncmer is combined with a second one downstream.
-This is done in a pseudorandom way by applying a function to the two syncmers
-and choosing the combination that *minimizes* the output of that function.
-An alternative is to *maximize* the function, but that gives similar results.
-
-Here, we test what happens when running both the min and max version
-and combining the results.
-
-The provided snakemake workflow (`Snakefile`) runs the evaluation "from scratch",
-that is, no further input files need to be provided.
-
-It does the following:
-- Download genome reference files
-- Simulate reads (using mason)
-- Map reads with BWA-MEM
-- Download and compile the two "min" and "max" strobealign versions
-- Map reads with the two strobealign versions
-- Combine min and max results
-- Compute accuracy
-- Create the result table in LaTeX format (see `table.tex`)
-
-A pre-computed output file is provided in `precomputed-table.tex`.
-
-
-## Running the min/max evaluation
+# Running the workflow
 
 Makes the required software available:
 
@@ -111,13 +89,8 @@ Download the genomes and simulate reads:
 
     snakemake --cores=all
 
-Run the actual min/max evaluation:
-
-    cd minmax
-    snakemake --cores=all
-
-The final results are in `minmax/table.tex`.
-The file should be identical to the provided `minmax/precomputed-table.tex`.
+This generates the folders `downloads/`, `genomes/` and `datasets/`.
+The `downloads/` folder contains intermediate files and can be deleted.
 
 
 ## Issues
@@ -128,26 +101,5 @@ The file should be identical to the provided `minmax/precomputed-table.tex`.
       Assertion failed : snpRecord.getPos() != svRecord.getPos()
       should be true but was 0 (Should be generated non-overlapping (snp pos = 229421492, sv pos = 229421492).)
 
-  This can be solved by using a self-compiled version of mason without assertions.
-
-
-## Commits
-
-The strobealign commits used are:
-
-- min: https://github.com/ksahlin/strobealign/commit/3223dc5946d9f38814e25a25149548dd146cc8d0 (original)
-- max: https://github.com/ksahlin/strobealign/commit/6a837431f29fc3be3c3a74bea507538d9ea5abe7 (tag: min-max)
-
-
-## Rules for combining reads
-
-### Single-end reads
-
-- If one read is unmapped, take the other
-- If one read has lower alignment score, take the other
-
-## Paired-end reads
-
-- If one pair has lower sum of alignment scores, take the other
-- If one pair is not marked as proper, take the other
-- If one pair has fewer mapped reads, take the other
+  We patch mason to work around this.
+  An alternative is to compile mason without assertions.
