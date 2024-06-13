@@ -13,6 +13,9 @@ COMMITS = {
 
 PROGRAMS = expand("strobealign-{commit}", commit=COMMITS) + ["bwamem"]
 
+localrules:
+    accuracy_csv, runtime_mem_csv
+
 rule final:
     input:
         expand("results/{program}/{library}/accuracy.{ends}.csv", program=PROGRAMS, library=LIBRARIES, ends=ENDS),
@@ -72,7 +75,7 @@ rule compile_strobealign:
     output: "bin/strobealign-{name}"
     params:
         commit=lambda wildcards: COMMITS[wildcards.name]
-    threads: 20
+    threads: 4
     shell:
         """
         wget https://github.com/ksahlin/strobealign/archive/{params.commit}.zip
