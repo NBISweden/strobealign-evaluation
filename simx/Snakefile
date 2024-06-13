@@ -14,11 +14,11 @@ COMMITS = {
 PROGRAMS = expand("strobealign-{commit}", commit=COMMITS) + ["bwamem"]
 
 localrules:
-    accuracy_csv, runtime_mem_csv
+    accuracy_csv, runtime_mem_csv, concat_accuracies, concat_memtime
 
 rule final:
     input:
-        expand("results/{program}/{library}/accuracy.{ends}.csv", program=PROGRAMS, library=LIBRARIES, ends=ENDS),
+        expand("results/{kind}-{genome}-{ends}.csv", kind=("memtime", "accuracy"), genome=GENOMES, ends=ENDS)
 
 
 # Map reads with BWA-MEM
@@ -152,70 +152,42 @@ rule accuracy_csv:
         mv {output.csv}.tmp {output.csv}
         """
 
-rule runtime_mem_csv:
+rule memtime_csv:
     output:
-        csv="results/{prog}/{dataset}-{genome}-{read_length}/runtime-mem.{ends}.csv"
+        csv="results/{prog}/{dataset}-{genome}-{read_length}/memtime.{ends}.csv"
     input:
         log="results/{prog}/{dataset}-{genome}-{read_length}/{ends}.bam.log"
     shell:
         """
         user_time=$(awk '/User time/ {{print $NF}}' {input.log})
-        memory=$(awk '/Maximum resident/ {{print $NF/1024}}' {input.log})
+        memory=$(awk '/Maximum resident/ {{print $NF/1048576}}' {input.log})
         indexing_time=$(awk '/Total time indexing:/ {{print $4}}' {input.log})
         mapping_time=$(awk '/Total time mapping:/ {{print $4}}' {input.log})
-        # tool,dataset,read_length,time,memory
-        echo {wildcards.prog},{wildcards.dataset},{wildcards.read_length},${{memory}},${{mapping_time}} > {output}
+        echo {wildcards.prog},{wildcards.dataset},{wildcards.read_length},${{mapping_time}},${{memory}} > {output}
         """
-    #if ! test -e ${accuracy_txt}; then
-      #echo "python get_accuracy.py --truth ${truth} --predicted ${bam} > ${accuracy_txt}.tmp"
-      #python get_accuracy.py --truth ${truth} --predicted ${bam} > ${accuracy_txt}.tmp
-      #mv ${accuracy_txt}.tmp ${accuracy_txt}
-    #fi
-    #accuracy=$(< ${accuracy_txt})
 
-    #desc="$(cd strobealign && git --no-pager log -n1 --pretty=format:%s ${h})"
-    #echo -e "${h}\t${accuracy}\t${memory}\t${user_time}\t${indexing_time}\t${mapping_time}\t${desc}" | tee ${result}
+def accuracies(wildcards):
+    return expand(
+        f"results/{{prog}}/{{dataset}}-{wildcards.genome}-{{read_length}}/accuracy.{wildcards.ends}.csv",
+        prog=PROGRAMS, dataset=DATASETS, read_length=READ_LENGTHS
+    )
 
 
+rule concat_accuracies:
+    output: "results/accuracy-{genome,([^/]*)}-{ends,(se|pe)}.csv"
+    input: accuracies
+    shell:
+        "( echo tool,dataset,read_length,aligned,accuracy,overaligned ; cat {input} ) > {output}"
 
-def read_accuracy(path) -> float:
-    with open(path) as f:
-        line = next(iter(f))
-    fields = line.split()
-    return float(fields[1])
 
+def memtimes(wildcards):
+    return expand(
+        f"results/{{prog}}/{{dataset}}-{wildcards.genome}-{{read_length}}/memtime.{wildcards.ends}.csv",
+        prog=PROGRAMS, dataset=DATASETS, read_length=READ_LENGTHS
+    )
 
-rule accuracy_table:
-    output:
-        tex="table.tex"
-    input:
-        expand(
-            "{program}/{dataset}/accuracy.{ends}.txt",
-            program=("bwamem", "strobealign-min", "strobealign-max", "strobealign-combined"),
-            dataset=LIBRARIES,
-            ends=ENDS,
-        )
-    run:
-        with open(output.tex, "w") as f:
-            for ends in ENDS:
-                title = "Single-end" if ends == "se" else "Paired-end"
-                print(f"\n# {title}", file=f)
-                print(r"\begin{tabular}{lrrrr}", file=f)
-                print(r"dataset &     min &     max & combined& combined minus min & BWA minus combined\\", file=f)
-                for dataset in LIBRARIES:
-                    accuracies = {
-                        program: read_accuracy(f"{program}/{dataset}/accuracy.{ends}.txt")
-                        for program in ("bwamem", "strobealign-min", "strobealign-max", "strobealign-combined")
-                    }
-                    delta = accuracies["strobealign-combined"] - accuracies["strobealign-min"]
-                    bwa_delta = accuracies["bwamem"] - accuracies["strobealign-combined"]
-                    print(
-                        f"{dataset:>14s} & "
-                        f"{accuracies['strobealign-min']:.4f} & "
-                        f"{accuracies['strobealign-max']:.4f} & "
-                        f"{accuracies['strobealign-combined']:.4f} & "
-                        f"{delta:+.4f} & "
-                        f"{bwa_delta:+.4f}\\\\",
-                        file=f
-                    )
-                print("\\end{tabular}", file=f)
+rule concat_memtime:
+    output: "results/memtime-{genome,([^/]*)}-{ends,(se|pe)}.csv"
+    input: memtimes
+    shell:
+        "( echo tool,dataset,read_length,time,memory ; cat {input} ) > {output}"
