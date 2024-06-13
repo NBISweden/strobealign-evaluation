@@ -1,0 +1,218 @@
+DATASETS = ("sim3", "sim4", "sim5")
+GENOMES = ("drosophila", "maize", "CHM13", "rye", "ecoli50")
+READ_LENGTHS = (50, 75, 100, 150, 200, 300, 500)
+
+LIBRARIES = expand("{dataset}-{genome}-{read_length}", dataset=DATASETS, genome=GENOMES, read_length=READ_LENGTHS)
+ENDS = ("pe", "se")
+
+# Strobealign commits
+COMMITS = {
+    "main-3a97f6b": "3a97f6b817824235a36ca8f9c5710ee533d3ad56",
+    "mcs-4ed851a": "4ed851adbe952a1f07c43bc0418fd071bcc6693e",
+}
+
+PROGRAMS = expand("strobealign-{commit}", commit=COMMITS) + ["bwamem"]
+
+rule final:
+    input:
+        expand("results/{program}/{library}/accuracy.{ends}.csv", program=PROGRAMS, library=LIBRARIES, ends=ENDS),
+
+
+# Map reads with BWA-MEM
+
+rule bwa_index:
+    output:
+        "{genome}.fa.amb",
+        "{genome}.fa.ann",
+        "{genome}.fa.bwt",
+        "{genome}.fa.pac",
+        "{genome}.fa.sa"
+    input: "{genome}.fa"
+    shell:
+        "bwa index {input}"
+
+
+rule bwa_mem_single_end:
+    output:
+        bam=temp("results/bwamem/{dataset}-{genome}-{read_length}/se.bam")
+    input:
+        fasta="genomes/{genome}.fa",
+        index="genomes/{genome}.fa.bwt",
+        r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
+    threads: 20
+    log:
+        "results/bwamem/{dataset}-{genome}-{read_length}/se.bam.log"
+    shell:
+        "/usr/bin/time -v bwa mem -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp"
+        " | grep -v '^@PG'"
+        " | samtools view --no-PG -o {output.bam}.tmp.bam -"
+        "\n mv -v {output.bam}.tmp.bam {output.bam}"
+        "\n mv -v {log}.tmp {log}"
+
+rule bwa_mem_paired_end:
+    output:
+        bam=temp("results/bwamem/{dataset}-{genome}-{read_length}/pe.bam")
+    input:
+        fasta="genomes/{genome}.fa",
+        index="genomes/{genome}.fa.bwt",
+        r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
+        r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
+    threads: 20
+    log:
+        "results/bwamem/{dataset}-{genome}-{read_length}/pe.bam.log"
+    shell:
+        "/usr/bin/time -v bwa mem -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
+        " | grep -v '^@PG'"
+        " | samtools view --no-PG -o {output.bam}.tmp.bam -"
+        "\n mv -v {output.bam}.tmp.bam {output.bam}"
+        "\n mv -v {log}.tmp {log}"
+
+
+rule compile_strobealign:
+    output: "bin/strobealign-{name}"
+    params:
+        commit=lambda wildcards: COMMITS[wildcards.name]
+    threads: 20
+    shell:
+        """
+        wget https://github.com/ksahlin/strobealign/archive/{params.commit}.zip
+        unzip {params.commit}.zip
+        rm {params.commit}.zip
+        cd strobealign-{params.commit}
+        cmake -B build -DCMAKE_C_FLAGS="-march=native" -DCMAKE_CXX_FLAGS="-march=native"
+        make -j {threads} -C build strobealign
+        mv build/strobealign ../{output}
+        cd ..
+        rm -rf strobealign-{params.commit}
+        """
+
+# Map reads with strobealign
+
+rule strobealign_paired_end:
+    output:
+        bam=temp("results/strobealign-{program}/{dataset}-{genome}-{read_length}/pe.bam")
+    input:
+        binary="bin/strobealign-{program}",
+        fasta="genomes/{genome}.fa",
+        r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
+        r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
+    threads: 20
+    log:
+        "results/strobealign-{program}/{dataset}-{genome}-{read_length}/pe.bam.log"
+    shell:
+        "/usr/bin/time -v bin/strobealign-{wildcards.program} -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
+        " | grep -v '^@PG'"
+        " | samtools view --no-PG -o {output.bam}.tmp.bam -"
+        "\n mv -v {output.bam}.tmp.bam {output.bam}"
+        "\n mv -v {log}.tmp {log}"
+
+rule strobealign_single_end:
+    output:
+        bam=temp("results/strobealign-{program}/{dataset}-{genome}-{read_length}/se.bam")
+    input:
+        binary="bin/strobealign-{program}",
+        fasta="genomes/{genome}.fa",
+        r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
+    threads: 20
+    log:
+        "results/strobealign-{program}/{dataset}-{genome}-{read_length}/se.bam.log"
+    shell:
+        "/usr/bin/time -v bin/strobealign-{wildcards.program} -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp"
+        " | grep -v '^@PG'"
+        " | samtools view --no-PG -o {output.bam}.tmp.bam -"
+        "\n mv -v {output.bam}.tmp.bam {output.bam}"
+        "\n mv -v {log}.tmp {log}"
+
+# Accuracy for all programs
+
+rule get_accuracy:
+    output:
+        txt="results/{program}/{dataset}-{genome}-{read_length}/accuracy.{ends}.txt"
+    input:
+        truth="datasets/{dataset}/{genome}-{read_length}/truth.{ends}.bam",
+        bam="results/{program}/{dataset}-{genome}-{read_length}/{ends}.bam"
+    shell:
+        "python get_accuracy.py --truth {input.truth} --predicted_sam {input.bam} > {output.txt}.tmp"
+        "\n mv -v {output.txt}.tmp {output.txt}"
+
+
+rule accuracy_csv:
+    output:
+        csv="results/{prog}/{dataset}-{genome}-{read_length}/accuracy.{ends}.csv"
+    input:
+        txt="results/{prog}/{dataset}-{genome}-{read_length}/accuracy.{ends}.txt",
+        log="results/{prog}/{dataset}-{genome}-{read_length}/{ends}.bam.log",
+    shell:
+        """
+        echo -n {wildcards.prog},{wildcards.dataset},{wildcards.read_length}, > {output.csv}.tmp
+        cut -f1-3 {input.txt} | tr '\\t' , >> {output.csv}.tmp
+        mv {output.csv}.tmp {output.csv}
+        """
+
+rule runtime_mem_csv:
+    output:
+        csv="results/{prog}/{dataset}-{genome}-{read_length}/runtime-mem.{ends}.csv"
+    input:
+        log="results/{prog}/{dataset}-{genome}-{read_length}/{ends}.bam.log"
+    shell:
+        """
+        user_time=$(awk '/User time/ {{print $NF}}' {input.log})
+        memory=$(awk '/Maximum resident/ {{print $NF/1024}}' {input.log})
+        indexing_time=$(awk '/Total time indexing:/ {{print $4}}' {input.log})
+        mapping_time=$(awk '/Total time mapping:/ {{print $4}}' {input.log})
+        # tool,dataset,read_length,time,memory
+        echo {wildcards.prog},{wildcards.dataset},{wildcards.read_length},${{memory}},${{mapping_time}} > {output}
+        """
+    #if ! test -e ${accuracy_txt}; then
+      #echo "python get_accuracy.py --truth ${truth} --predicted ${bam} > ${accuracy_txt}.tmp"
+      #python get_accuracy.py --truth ${truth} --predicted ${bam} > ${accuracy_txt}.tmp
+      #mv ${accuracy_txt}.tmp ${accuracy_txt}
+    #fi
+    #accuracy=$(< ${accuracy_txt})
+
+    #desc="$(cd strobealign && git --no-pager log -n1 --pretty=format:%s ${h})"
+    #echo -e "${h}\t${accuracy}\t${memory}\t${user_time}\t${indexing_time}\t${mapping_time}\t${desc}" | tee ${result}
+
+
+
+def read_accuracy(path) -> float:
+    with open(path) as f:
+        line = next(iter(f))
+    fields = line.split()
+    return float(fields[1])
+
+
+rule accuracy_table:
+    output:
+        tex="table.tex"
+    input:
+        expand(
+            "{program}/{dataset}/accuracy.{ends}.txt",
+            program=("bwamem", "strobealign-min", "strobealign-max", "strobealign-combined"),
+            dataset=LIBRARIES,
+            ends=ENDS,
+        )
+    run:
+        with open(output.tex, "w") as f:
+            for ends in ENDS:
+                title = "Single-end" if ends == "se" else "Paired-end"
+                print(f"\n# {title}", file=f)
+                print(r"\begin{tabular}{lrrrr}", file=f)
+                print(r"dataset &     min &     max & combined& combined minus min & BWA minus combined\\", file=f)
+                for dataset in LIBRARIES:
+                    accuracies = {
+                        program: read_accuracy(f"{program}/{dataset}/accuracy.{ends}.txt")
+                        for program in ("bwamem", "strobealign-min", "strobealign-max", "strobealign-combined")
+                    }
+                    delta = accuracies["strobealign-combined"] - accuracies["strobealign-min"]
+                    bwa_delta = accuracies["bwamem"] - accuracies["strobealign-combined"]
+                    print(
+                        f"{dataset:>14s} & "
+                        f"{accuracies['strobealign-min']:.4f} & "
+                        f"{accuracies['strobealign-max']:.4f} & "
+                        f"{accuracies['strobealign-combined']:.4f} & "
+                        f"{delta:+.4f} & "
+                        f"{bwa_delta:+.4f}\\\\",
+                        file=f
+                    )
+                print("\\end{tabular}", file=f)

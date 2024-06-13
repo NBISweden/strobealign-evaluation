@@ -10,6 +10,8 @@ The following workflows are available:
 - `minmax/Snakefile`: Reproduces the min/max evaluation experiments in the paper
   "Designing efficient randstrobes for sequence similarity
   analyses" by Karami et al., 2023. (see `minmax/README.md`)
+- `simx/Snakefile`: Run strobealign and BWA-MEM on all datasets
+  (sim3, sim4, sim5), measure accuarcy, and plot the results.
 
 
 ## Datasets
