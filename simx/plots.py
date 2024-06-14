@@ -33,6 +33,7 @@ def plot(
         linewidth=linewidth,
         kind="line",  # dashes = dashes,
         col="dataset",
+        row="genome",
         ###hue_order=tools,  ### TODO
         facet_kws={"sharey": False},  # hue="datastructure", style="datastructure",
         # col_wrap=2,
