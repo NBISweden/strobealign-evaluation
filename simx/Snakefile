@@ -12,13 +12,14 @@ COMMITS = {
 }
 
 PROGRAMS = expand("strobealign-{commit}", commit=COMMITS) + ["bwamem"]
+PLOTS = ("accuracy", "aligned", "time", "memory")
 
 localrules:
     measurement_csv, concat_csvs
 
 rule final:
     input:
-        expand("results/{genome}-{ends}.csv", genome=GENOMES, ends=ENDS)
+        expand("plots/{ends}/{plot}.pdf", ends=ENDS, plot=PLOTS)
 
 
 # Map reads with BWA-MEM
@@ -176,3 +177,10 @@ rule concat_genome_csvs:
     input: expand("results/{genome}-{{ends}}.csv", genome=GENOMES)
     shell:
         "( echo tool,dataset,genome,read_length,aligned,accuracy,overaligned,time,memory ; for f in {input}; do sed 1d $f; done ) > {output}"
+
+rule plot_se:
+    output: expand("plots/{{ends}}/{plot}.pdf", plot=PLOTS)
+    input: csv="results/{ends}.csv"
+    params: title=lambda wildcards: "Single" if wildcards.ends == "se" else "Paired"
+    shell:
+        "python3 plots.py -t '{params.title}-end reads' {input.csv} plots/{wildcards.ends}"

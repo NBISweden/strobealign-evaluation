@@ -1,6 +1,7 @@
 import os, sys
 import argparse
 import random
+from typing import Optional
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -19,6 +20,7 @@ def plot(
     linewidth=2.5,
     xlim=(0, 500),
     logscale: bool = False,
+    title: Optional[str] = None,
 ):
     matplotlib.rcParams.update({"font.size": 18})
     sns.set(font_scale=1.2)
@@ -40,14 +42,15 @@ def plot(
         ###col_order=["drosophila", "maize", "CHM13", "rye"],   ### TODO
         ###palette=palette,   ### TODO
     )
+    g.figure.suptitle(title)
     g.set_axis_labels("Read length", label)
     if logscale:
         g.set(yscale="log")
         g.set(
-            yticks=[i for i in range(10, 99, 10)]
-            + [i for i in range(100, 999, 100)]
-            + [i for i in range(1000, 1999, 1000)]
-        )  # + [i for i in range(10000,39999,10000)]) #, ylim=(0, 5200))
+            yticks=list(range(10, 99, 10))
+            + list(range(100, 999, 100))
+            + list(range(1000, 1999, 1000))
+        )  # + list(range(10000,39999,10000))
 
     g.set(xlim=xlim, xticks=read_lengths)
     g.set_xticklabels(rotation=90, labels=read_lengths)
@@ -57,9 +60,9 @@ def plot(
 
 
 def plot_accuracy(
-    input_csv, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500)
+    input_csv, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
 ):
-    pdf_path = os.path.join(outfolder, "accuracy_plot.pdf")
+    pdf_path = os.path.join(outfolder, "accuracy.pdf")
     plot(
         input_csv,
         pdf_path,
@@ -70,13 +73,14 @@ def plot_accuracy(
         label="Accuracy (%)",
         linewidth=linewidth,
         xlim=xlim,
+        title=title,
     )
 
 
 def plot_percentage_aligned(
-    input_csv, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500)
+    input_csv, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
 ):
-    pdf_path = os.path.join(outfolder, "percentage_aligned_plot.pdf")
+    pdf_path = os.path.join(outfolder, "aligned.pdf")
     plot(
         input_csv,
         pdf_path,
@@ -87,13 +91,14 @@ def plot_percentage_aligned(
         label="Percentage aligned",
         linewidth=linewidth,
         xlim=xlim,
+        title=title,
     )
 
 
 def plot_memory_usage(
-    input_csv, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500)
+    input_csv, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
 ):
-    pdf_path = os.path.join(outfolder, "memory_plot.pdf")
+    pdf_path = os.path.join(outfolder, "memory.pdf")
     plot(
         input_csv,
         pdf_path,
@@ -104,13 +109,14 @@ def plot_memory_usage(
         label="Memory usage (GB)",
         linewidth=linewidth,
         xlim=xlim,
+        title=title,
     )
 
 
 def plot_runtime(
-    input_csv, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500)
+    input_csv, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
 ):
-    pdf_path = os.path.join(outfolder, "time_plot.pdf")
+    pdf_path = os.path.join(outfolder, "time.pdf")
     plot(
         input_csv,
         pdf_path,
@@ -122,6 +128,7 @@ def plot_runtime(
         linewidth=linewidth,
         xlim=xlim,
         logscale=True,
+        title=title,
     )
 
 
@@ -170,6 +177,7 @@ def main(args):
         read_lengths,
         linewidth=2.5,
         xlim=xlim,
+        title=args.title,
     )
     plot_percentage_aligned(
         csv,
@@ -179,6 +187,7 @@ def main(args):
         read_lengths,
         linewidth=2.5,
         xlim=xlim,
+        title=args.title,
     )
     plot_runtime(
         csv,
@@ -188,6 +197,7 @@ def main(args):
         read_lengths,
         linewidth=2.5,
         xlim=xlim,
+        title=args.title,
     )
     plot_memory_usage(
         csv,
@@ -197,6 +207,7 @@ def main(args):
         read_lengths,
         linewidth=2.5,
         xlim=xlim,
+        title=args.title,
     )
 
 
@@ -205,6 +216,7 @@ if __name__ == "__main__":
         description="Calc identity",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
+    parser.add_argument("--title", "-t", help="Optional title")
     parser.add_argument("csv", help="results file")
     parser.add_argument("outfolder", help="outfolder to plots.")
     args = parser.parse_args()
