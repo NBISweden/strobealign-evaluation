@@ -8,204 +8,120 @@ import seaborn as sns
 import pandas as pd
 
 
-def plot_accuracy(
-    input_csv, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500)
+def plot(
+    input_csv,
+    pdf_path,
+    palette,
+    tools,
+    read_lengths,
+    y: str,
+    label: str,
+    linewidth=2.5,
+    xlim=(0, 500),
+    logscale: bool = False,
 ):
     matplotlib.rcParams.update({"font.size": 18})
     sns.set(font_scale=1.2)
-    # sns.set(font_scale=1.6) # for main SIM3
     sns.set_style("whitegrid")
     indata = pd.read_csv(input_csv)
-    # "minimap2",'accelalign', "bowtie2", "strobealign_map", "minimap2_map", "accelalign_map"
-    # dashes = {"bwa_mem" : "", "bowtie2" : "",
-    #             "minimap2" : "", "minimap2_map" : (5,5),
-    #             "strobealign" : "", "strobealign_map" : (5,5),
-    #             "accelalign" : "", "accelalign_map" : (5,5)}
     g = sns.relplot(
         data=indata,
         x="read_length",
-        y="accuracy",
+        y=y,
         hue="tool",
         style="type",
         linewidth=linewidth,
         kind="line",  # dashes = dashes,
         col="dataset",
-        ###hue_order=tools,
+        ###hue_order=tools,  ### TODO
         facet_kws={"sharey": False},  # hue="datastructure", style="datastructure",
-        #col_wrap=2,
-        ###col_order=["drosophila", "maize", "CHM13", "rye"],
-        ###palette=palette,
+        # col_wrap=2,
+        ###col_order=["drosophila", "maize", "CHM13", "rye"],   ### TODO
+        ###palette=palette,   ### TODO
     )
-    # col_order=["SIM3"], palette=palette)
-    # ax = sns.lineplot(data=indata, x="k", y="unique", hue="datastructure", style="chr", palette = sns.color_palette()[:7])
-    # axes = g.axes
-    # g.set_titles("SIM3")
-    g.set_axis_labels("Read length", "Accuracy")
-    # g.set_xticklabels([18,24,30,36])
-    # ax.set_ylabel("% unique")
-    # ax.set_xlabel("k")
-    # ax.set_ylim((75, 100))
-    g.set(xlim=xlim)
-    # ylim=(80, 98),
-####    #g.set(xlim=xlim, xticks=read_lengths)
+    g.set_axis_labels("Read length", label)
+    if logscale:
+        g.set(yscale="log")
+        g.set(
+            yticks=[i for i in range(10, 99, 10)]
+            + [i for i in range(100, 999, 100)]
+            + [i for i in range(1000, 1999, 1000)]
+        )  # + [i for i in range(10000,39999,10000)]) #, ylim=(0, 5200))
+
+    g.set(xlim=xlim, xticks=read_lengths)
     g.set_xticklabels(rotation=90, labels=read_lengths)
     g.tight_layout()
-    # g.set(ylim=(95, 100))
-    plt.savefig(os.path.join(outfolder, "accuracy_plot.pdf"))
+    plt.savefig(pdf_path)
     plt.close()
+
+
+def plot_accuracy(
+    input_csv, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500)
+):
+    pdf_path = os.path.join(outfolder, "accuracy_plot.pdf")
+    plot(
+        input_csv,
+        pdf_path,
+        palette,
+        tools,
+        read_lengths,
+        y="accuracy",
+        label="Accuracy",
+        linewidth=linewidth,
+        xlim=xlim,
+    )
 
 
 def plot_percentage_aligned(
     input_csv, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500)
 ):
-    matplotlib.rcParams.update({"font.size": 18})
-    sns.set(font_scale=1.2)
-    # sns.set(font_scale=1.6) # for main SIM3
-    sns.set_style("whitegrid")
-
-    indata = pd.read_csv(input_csv)
-
-    # dashes = { "strobemap" : "",
-    #             "spaced_sparse": (5,5),
-    #             "spaced_dense": (5,5),
-    #              "minstrobes2" : (1,1),
-    #              "minstrobes3" : (1,1),
-    #              "randstrobes2" : (1,1),
-    #              "randstrobes3" : (1,1),
-    #              "hybridstrobes2" : (1,1),
-    #              "hybridstrobes3" : (1,1)}
-    # print(indata)
-    g = sns.relplot(
-        data=indata,
-        x="read_length",
+    pdf_path = os.path.join(outfolder, "percentage_aligned_plot.pdf")
+    plot(
+        input_csv,
+        pdf_path,
+        palette,
+        tools,
+        read_lengths,
         y="aligned",
-        hue="tool",
-        style="type",
+        label="Percentage aligned",
         linewidth=linewidth,
-        col="dataset",
-        kind="line",
-        hue_order=tools,  # dashes = dashes, hue="datastructure", style="datastructure",
-        #col_wrap=2,
-        #col_order=["drosophila", "maize", "CHM13", "rye"],
-        palette=palette,
+        xlim=xlim,
     )
-    # col_order=["SIM3"], palette=palette)
-    # ax = sns.lineplot(data=indata, x="k", y="unique", hue="datastructure", style="chr", palette = sns.color_palette()[:7])
-    # axes = g.axes
-    # g.set_titles("SIM3")
-    g.set_axis_labels("Read length", "Percentage aligned")
-    # g.set_xticklabels([18,24,30,36])
-    # ax.set_ylabel("% unique")
-    # ax.set_xlabel("k")
-    # axes.set_xticks([18,24,30,36] )
-    # ax.set_ylim((75, 100))
-    g.set(ylim=(95, 100), xlim=xlim, xticks=read_lengths)
-    g.set_xticklabels(rotation=90, labels=read_lengths)
-    g.tight_layout()
-    # g.set(ylim=(95, 100))
-    # ax.set_xticks([18,24,30,36])
-    # plt.savefig(os.path.join(outfolder, "percentage_aligned_plot.eps"))
-    plt.savefig(os.path.join(outfolder, "percentage_aligned_plot.pdf"))
-    plt.close()
 
 
 def plot_memory_usage(
     input_csv, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500)
 ):
-    matplotlib.rcParams.update({"font.size": 18})
-    sns.set(font_scale=1.2)
-    # sns.set(font_scale=1.6) # for main SIM3
-    # tool,dataset,read_length,time,memory
-    indata = pd.read_csv(input_csv)
-
-    sns.set_style("whitegrid")
-
-    g = sns.relplot(
-        data=indata,
-        x="read_length",
+    pdf_path = os.path.join(outfolder, "memory_plot.pdf")
+    plot(
+        input_csv,
+        pdf_path,
+        palette,
+        tools,
+        read_lengths,
         y="memory",
-        hue="tool",
-        style="type",
+        label="Memory usage (GB)",
         linewidth=linewidth,
-        col="dataset",
-        kind="line",
-        hue_order=tools,  # dashes = dashes, hue="datastructure", style="datastructure",
-        #col_wrap=2,
-        #col_order=["drosophila", "maize", "CHM13", "rye"],
-        palette=palette,
+        xlim=xlim,
     )
-    # col_order=["SIM3"], palette=palette)
-    # ax = sns.lineplot(data=indata, x="k", y="unique", hue="datastructure", style="chr", palette = sns.color_palette()[:7])
-    # axes = g.axes
-    # g.set_titles("SIM3")
-    g.set_axis_labels("Read length", "Memory usage (GB)")
-    # g.set_xticklabels([18,24,30,36])
-    # ax.set_ylabel("% unique")
-    # ax.set_xlabel("k")
-    # axes.set_xticks([18,24,30,36] )
-    # ax.set_ylim((75, 100))
-    g.set(xlim=xlim, xticks=read_lengths)  # ylim=(40, 100),
-    g.set_xticklabels(rotation=90, labels=read_lengths)
-    g.tight_layout()
-    # g.set(ylim=(95, 100))
-    # ax.set_xticks([18,24,30,36])
-    # plt.savefig(os.path.join(outfolder, "memory_plot.eps"))
-    plt.savefig(os.path.join(outfolder, "memory_plot.pdf"))
-    plt.close()
 
 
 def plot_runtime(
     input_csv, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500)
 ):
-    matplotlib.rcParams.update({"font.size": 18})
-    sns.set(font_scale=1.2)
-    # sns.set(font_scale=1.6) # for main SIM3
-    # tool,dataset,read_length,time,memory
-    sns.set_style("whitegrid")
-
-    indata = pd.read_csv(input_csv)
-    g = sns.relplot(
-        data=indata,
-        x="read_length",
+    pdf_path = os.path.join(outfolder, "time_plot.pdf")
+    plot(
+        input_csv,
+        pdf_path,
+        palette,
+        tools,
+        read_lengths,
         y="time",
-        hue="tool",
-        style="type",
+        label="Time (sec)",
         linewidth=linewidth,
-        col="dataset",
-        kind="line",
-        hue_order=tools,  # dashes = dashes, hue="datastructure", style="datastructure",
-        #col_wrap=2,
-        #col_order=["drosophila", "maize", "CHM13", "rye"],
-        palette=palette,
+        xlim=xlim,
+        logscale=True,
     )
-    # col_order=["SIM3"], palette=palette) # for main SIM3
-    # ax = sns.lineplot(data=indata, x="k", y="unique", hue="datastructure", style="chr", palette = sns.color_palette()[:7])
-    # axes = g.axes
-    # g.set_titles("SIM3")
-    g.set_axis_labels("Read length", "Time (sec)")
-    # g.set_xticklabels([18,24,30,36])
-    # ax.set_ylabel("% unique")
-    # ax.set_xlabel("k")
-    # axes.set_xticks([18,24,30,36] )
-    # ax.set_ylim((75, 100))
-    g.set(yscale="log")
-    g.set(
-        yticks=[i for i in range(10, 99, 10)]
-        + [i for i in range(100, 999, 100)]
-        + [i for i in range(1000, 1999, 1000)]
-    )  # + [i for i in range(10000,39999,10000)]) #, ylim=(0, 5200))
-    # g.set_yticklabels( ["100"] + ["" for i in range(200,999,100)] + ["1000"] +  ["" for i in range(2000,9999,1000)] + ["10000"] +  [i for i in range(1000,2999,1000)]])
-
-    g.set(xlim=xlim, xticks=read_lengths)  # ylim=(40, 100),
-    g.set_xticklabels(rotation=90, labels=read_lengths)
-    g.tight_layout()
-    # g.set( yticks=[0,1000,2000,4000,6000,12000,18000,24000]) #ylim=(40, 100),
-
-    # g.set(ylim=(95, 100))
-    # ax.set_xticks([18,24,30,36])
-    # plt.savefig(os.path.join(outfolder, "time_plot.eps"))
-    plt.savefig(os.path.join(outfolder, "time_plot.pdf"))
-    plt.close()
 
 
 def add_column(infile):
