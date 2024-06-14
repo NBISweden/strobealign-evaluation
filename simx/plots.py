@@ -66,7 +66,7 @@ def plot_accuracy(
         tools,
         read_lengths,
         y="accuracy",
-        label="Accuracy",
+        label="Accuracy (%)",
         linewidth=linewidth,
         xlim=xlim,
     )
@@ -159,11 +159,10 @@ def main(args):
     read_lengths = [50, 75, 100, 150, 200, 300, 500]
     tools = ["strobealign-main-3a97f6b", "strobealign-mcs-4ed851a", "bwamem"]
     xlim = (40, 260)
-    accuracy_csv = add_column(args.accuracy_csv)
-    runtime_mem_csv = add_column(args.runtime_mem_csv)
+    csv = add_column(args.csv)
 
     plot_accuracy(
-        accuracy_csv,
+        csv,
         args.outfolder,
         palette,
         tools,
@@ -172,7 +171,7 @@ def main(args):
         xlim=xlim,
     )
     plot_percentage_aligned(
-        accuracy_csv,
+        csv,
         args.outfolder,
         palette,
         tools,
@@ -181,7 +180,7 @@ def main(args):
         xlim=xlim,
     )
     plot_runtime(
-        runtime_mem_csv,
+        csv,
         args.outfolder,
         palette,
         tools,
@@ -190,7 +189,7 @@ def main(args):
         xlim=xlim,
     )
     plot_memory_usage(
-        runtime_mem_csv,
+        csv,
         args.outfolder,
         palette,
         tools,
@@ -205,8 +204,7 @@ if __name__ == "__main__":
         description="Calc identity",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("accuracy_csv", help="results file")
-    parser.add_argument("runtime_mem_csv", help="results file")
+    parser.add_argument("csv", help="results file")
     parser.add_argument("outfolder", help="outfolder to plots.")
     args = parser.parse_args()
 
