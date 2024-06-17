@@ -110,6 +110,7 @@ rule strobealign_paired_end:
         "\n mv -v {output.bam}.tmp.bam {output.bam}"
         "\n mv -v {log}.tmp {log}"
 
+
 rule strobealign_single_end:
     output:
         bam=temp("results/strobealign-{program}/{dataset}-{genome}-{read_length}/se.bam")
@@ -127,11 +128,43 @@ rule strobealign_single_end:
         "\n mv -v {output.bam}.tmp.bam {output.bam}"
         "\n mv -v {log}.tmp {log}"
 
-# Accuracy for all programs
 
-rule get_accuracy:
+rule strobealign_paf_paired_end:
     output:
-        txt="results/{program}/{dataset}-{genome}-{read_length}/accuracy.{ends}.txt"
+        paf=temp("results/strobealign-{program}/{dataset}-{genome}-{read_length}/pe.paf.gz")
+    input:
+        binary="bin/strobealign-{program}",
+        fasta="genomes/{genome}.fa",
+        r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
+        r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
+    threads: 20
+    log:
+        "results/strobealign-{program}/{dataset}-{genome}-{read_length}/pe.paf.log"
+    shell:
+        "/usr/bin/time -v bin/strobealign-{wildcards.program} -x -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp | igzip > {output.paf}.tmp.gz"
+        "\n mv -v {output.paf}.tmp.gz {output.paf}"
+        "\n mv -v {log}.tmp {log}"
+
+
+rule strobealign_paf_single_end:
+    output:
+        paf=temp("results/strobealign-{program}/{dataset}-{genome}-{read_length}/se.paf.gz")
+    input:
+        binary="bin/strobealign-{program}",
+        fasta="genomes/{genome}.fa",
+        r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
+    threads: 20
+    log:
+        "results/strobealign-{program}/{dataset}-{genome}-{read_length}/se.paf.log"
+    shell:
+        "/usr/bin/time -v bin/strobealign-{wildcards.program} -x -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp | igzip > {output.paf}.tmp.gz"
+        "\n mv -v {output.paf}.tmp.gz {output.paf}"
+        "\n mv -v {log}.tmp {log}"
+
+
+rule bam_accuracy:
+    output:
+        txt="results/{program}/{dataset}-{genome}-{read_length}/{ends}.bam.accuracy.txt"
     input:
         truth="datasets/{dataset}/{genome}-{read_length}/truth.{ends}.bam",
         bam="results/{program}/{dataset}-{genome}-{read_length}/{ends}.bam"
@@ -140,12 +173,23 @@ rule get_accuracy:
         "\n mv -v {output.txt}.tmp {output.txt}"
 
 
+rule paf_accuracy:
+    output:
+        txt="results/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.accuracy.txt"
+    input:
+        truth="datasets/{dataset}/{genome}-{read_length}/truth.{ends}.bam",
+        paf="results/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.gz"
+    shell:
+        "python get_accuracy.py --truth {input.truth} --predicted_paf {input.paf} > {output.txt}.tmp"
+        "\n mv -v {output.txt}.tmp {output.txt}"
+
+
 rule result_csv:
     output:
-        csv="results/{prog}/{dataset}-{genome}-{read_length}/result.{ends}.csv"
+        csv="results/{prog}/{dataset}-{genome}-{read_length}/{ends}.{bampaf}.csv"
     input:
-        txt="results/{prog}/{dataset}-{genome}-{read_length}/accuracy.{ends}.txt",
-        log="results/{prog}/{dataset}-{genome}-{read_length}/{ends}.bam.log",
+        txt="results/{prog}/{dataset}-{genome}-{read_length}/{ends}.{bampaf}.accuracy.txt",
+        log="results/{prog}/{dataset}-{genome}-{read_length}/{ends}.{bampaf}.log",
     shell:
         """
         echo -n {wildcards.prog},{wildcards.dataset},{wildcards.genome},{wildcards.read_length}, > {output.csv}.tmp
@@ -159,10 +203,15 @@ rule result_csv:
         """
 
 def csvs(wildcards):
-    return expand(
-        f"results/{{prog}}/{{dataset}}-{wildcards.genome}-{{read_length}}/result.{wildcards.ends}.csv",
+    files = expand(
+        f"results/{{prog}}/{{dataset}}-{wildcards.genome}-{{read_length}}/{wildcards.ends}.bam.csv",
         prog=PROGRAMS, dataset=DATASETS, read_length=READ_LENGTHS
     )
+    files += expand(
+        f"results/{{prog}}/{{dataset}}-{wildcards.genome}-{{read_length}}/{wildcards.ends}.paf.csv",
+        prog=(prog for prog in PROGRAMS if prog != "bwamem"), dataset=DATASETS, read_length=READ_LENGTHS
+    )
+    return files
 
 
 rule concat_csvs:
