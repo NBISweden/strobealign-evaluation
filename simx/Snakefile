@@ -15,7 +15,7 @@ PROGRAMS = expand("strobealign-{commit}", commit=COMMITS) + ["bwamem"]
 PLOTS = ("accuracy", "aligned", "time", "memory")
 
 localrules:
-    measurement_csv, concat_csvs
+    result_csv, concat_csvs, concat_genome_csvs
 
 rule final:
     input:
