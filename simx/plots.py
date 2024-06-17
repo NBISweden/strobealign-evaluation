@@ -132,27 +132,6 @@ def plot_runtime(
     )
 
 
-def add_column(infile):
-    with open(infile + "_mod.csv", "w") as mod_outfile:
-        for i, line in enumerate(open(infile, "r")):
-            if i == 0:
-                line = line.strip() + ",type\n"
-                mod_outfile.write(line)
-                continue
-            vals = line.strip().split(",")
-            is_aln = True
-            if "_map" in vals[0]:
-                v_tmp = vals[0][:-4]
-                vals[0] = v_tmp
-                is_aln = False
-
-            vals.append("align" if is_aln else "map")
-            mod_line = ",".join(vals) + "\n"
-            mod_outfile.write(mod_line)
-
-    return mod_outfile.name
-
-
 def main(args):
     sns.set_style("whitegrid")
     palette = {
@@ -167,7 +146,7 @@ def main(args):
     read_lengths = [50, 75, 100, 150, 200, 300, 500]
     tools = ["strobealign-main-3a97f6b", "strobealign-mcs-4ed851a", "bwamem"]
     xlim = (40, 260)
-    csv = add_column(args.csv)
+    csv = args.csv
 
     plot_accuracy(
         csv,

@@ -190,9 +190,11 @@ rule result_csv:
     input:
         txt="results/{prog}/{dataset}-{genome}-{read_length}/{ends}.{bampaf}.accuracy.txt",
         log="results/{prog}/{dataset}-{genome}-{read_length}/{ends}.{bampaf}.log",
+    params:
+        typ=lambda wildcards: "map" if wildcards.bampaf == "paf" else "align"
     shell:
         """
-        echo -n {wildcards.prog},{wildcards.dataset},{wildcards.genome},{wildcards.read_length}, > {output.csv}.tmp
+        echo -n {wildcards.prog},{params.typ},{wildcards.dataset},{wildcards.genome},{wildcards.read_length}, > {output.csv}.tmp
         cut -f1-3 {input.txt} | tr '\\t' , | tr -d '\\n' >> {output.csv}.tmp
         user_time=$(awk '/User time/ {{print $NF}}' {input.log})
         memory=$(awk '/Maximum resident/ {{print $NF/1048576}}' {input.log})
@@ -218,14 +220,14 @@ rule concat_csvs:
     output: "results/{genome,([^/]*)}-{ends,(se|pe)}.csv"
     input: csvs
     shell:
-        "( echo tool,dataset,genome,read_length,aligned,accuracy,overaligned,time,memory ; cat {input} ) > {output}"
+        "( echo tool,type,dataset,genome,read_length,aligned,accuracy,overaligned,time,memory ; cat {input} ) > {output}"
 
 
 rule concat_genome_csvs:
     output: "results/{ends,(se|pe)}.csv"
     input: expand("results/{genome}-{{ends}}.csv", genome=GENOMES)
     shell:
-        "( echo tool,dataset,genome,read_length,aligned,accuracy,overaligned,time,memory ; for f in {input}; do sed 1d $f; done ) > {output}"
+        "( echo tool,type,dataset,genome,read_length,aligned,accuracy,overaligned,time,memory ; for f in {input}; do sed 1d $f; done ) > {output}"
 
 rule plot_se:
     output: expand("plots/{{ends}}/{plot}.pdf", plot=PLOTS)
