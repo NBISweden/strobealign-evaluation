@@ -2,6 +2,7 @@ import os
 import sys
 import argparse
 import pysam
+from xopen import xopen
 
 
 def read_sam(sam_file):
@@ -46,15 +47,16 @@ def read_sam(sam_file):
 def read_paf(paf_file):
     read_positions = {} # acc -> [ref_id, ref_start, refstop]
     mapped_to_multiple_pos = 0
-    for line in open(paf_file, 'r'):
-        vals = line.split()
-        read_acc, ref_name, reference_start, reference_end  = vals[0], vals[5], int(vals[7]), int(vals[8])
+    with xopen(paf_file) as paf:
+        for line in paf:
+            vals = line.split()
+            read_acc, ref_name, reference_start, reference_end  = vals[0], vals[5], int(vals[7]), int(vals[8])
 
-        if read_acc in read_positions:
-            mapped_to_multiple_pos += 1
-            continue
-        else:
-            read_positions[read_acc] = (ref_name, reference_start, reference_end)
+            if read_acc in read_positions:
+                mapped_to_multiple_pos += 1
+                continue
+            else:
+                read_positions[read_acc] = (ref_name, reference_start, reference_end)
     return read_positions, mapped_to_multiple_pos
 
 
