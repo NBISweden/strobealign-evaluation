@@ -33,14 +33,12 @@ def plot(
         hue="tool",
         style="type",
         linewidth=linewidth,
-        kind="line",  # dashes = dashes,
+        kind="line",
         col="dataset",
         row="genome",
-        ###hue_order=tools,  ### TODO
-        facet_kws={"sharey": False},  # hue="datastructure", style="datastructure",
-        # col_wrap=2,
-        ###col_order=["drosophila", "maize", "CHM13", "rye"],   ### TODO
-        ###palette=palette,   ### TODO
+        facet_kws={"sharey": False},
+        #col_order=["drosophila", "maize", "CHM13", "rye"],   # TODO
+        palette=palette,
     )
     g.figure.suptitle(title)
     g.set_axis_labels("Read length", label)
