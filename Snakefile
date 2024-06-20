@@ -189,7 +189,8 @@ rule samtools_faidx:
 rule clone_seqan:
     output: "seqan/cloned"
     shell:
-        "git clone --branch db5e0ce7e0b7946ff5d1ca22e652faa0b5b9603c https://github.com/seqan/seqan.git"
+        "git clone https://github.com/seqan/seqan.git"
+        "; ( cd seqan && git checkout db5e0ce7e0b7946ff5d1ca22e652faa0b5b9603c )"
         "; touch seqan/cloned"
 
 rule patch_seqan:
