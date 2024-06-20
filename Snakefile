@@ -195,9 +195,9 @@ rule clone_seqan:
 
 rule patch_seqan:
     output: "seqan/patched"
-    input: "seqan-hotfix.patch"
+    input: "seqan/cloned", patch="seqan-hotfix.patch"
     shell:
-        "patch -p1 -d seqan < {input}; "
+        "patch -p1 -d seqan < {input.patch}; "
         "touch {output}"
 
 rule build_mason:
