@@ -6,7 +6,7 @@
 
 N_READS = 10_000_000
 
-# 'ecoli50' disabled for now
+# Genome 'ecoli50' disabled for now to avoid cluttering the plots
 GENOMES = ("drosophila", "maize", "CHM13", "rye")
 READ_LENGTHS = (50, 75, 100, 150, 200, 300, 500)
 
