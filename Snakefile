@@ -4,7 +4,7 @@
 # This creates the downloads/, datasets/ and genomes/ directories.
 # (downloads/ can be deleted.)
 
-N_READS = 1_000_000
+N_READS = 10_000_000
 
 GENOMES = ("drosophila", "maize", "CHM13", "rye", "ecoli50")
 READ_LENGTHS = (50, 75, 100, 150, 200, 300, 500)
