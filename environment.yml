@@ -13,3 +13,4 @@ dependencies:
   - samtools=1.18
   - cmake=3.27
   - cxx-compiler
+  - seaborn
