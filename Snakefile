@@ -117,7 +117,7 @@ rule filter_rye:
 
 rule mason_variator:
     output:
-        vcf="variations/{sim}-{genome}.vcf"
+        vcf="variants/{sim}-{genome}.vcf"
     input:
         fasta="genomes/{genome}.fa",
         fai="genomes/{genome}.fa.fai",
