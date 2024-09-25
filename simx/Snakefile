@@ -1,5 +1,6 @@
 DATASETS = ("sim3", "sim4", "sim5")
-GENOMES = ("drosophila", "maize", "CHM13", "rye", "ecoli50")
+GENOMES = ("drosophila", "maize", "CHM13", "rye") # optional: "ecoli50"
+
 READ_LENGTHS = (50, 75, 100, 150, 200, 300, 500)
 
 LIBRARIES = expand("{dataset}-{genome}-{read_length}", dataset=DATASETS, genome=GENOMES, read_length=READ_LENGTHS)
