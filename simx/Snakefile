@@ -230,7 +230,7 @@ rule concat_genome_csvs:
     shell:
         "( echo tool,type,dataset,genome,read_length,aligned,accuracy,overaligned,time,memory ; for f in {input}; do sed 1d $f; done ) > {output}"
 
-rule plot_se:
+rule plot:
     output: expand("plots/{{ends}}/{plot}.pdf", plot=PLOTS)
     input: csv="results/{ends}.csv"
     params: title=lambda wildcards: "Single" if wildcards.ends == "se" else "Paired"
