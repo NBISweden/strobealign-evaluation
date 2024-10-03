@@ -200,7 +200,7 @@ rule build_mason:
     input: "seqan/cloned"
     threads: 99
     shell:
-        "cmake -DSEQAN_BUILD_SYSTEM=APP:mason2 -B build-seqan seqan; "
+        "cmake -DSEQAN_BUILD_SYSTEM=APP:mason2 -DSEQAN_ARCH_SSE4=1 -B build-seqan seqan; "
         "cmake --build build-seqan -j {threads}; "
         "mv build-seqan/bin/mason_simulator build-seqan/bin/mason_variator bin/"
         #"; rm -r seqan"
