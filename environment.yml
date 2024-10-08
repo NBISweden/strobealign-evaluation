@@ -14,3 +14,4 @@ dependencies:
   - cmake=3.27
   - cxx-compiler
   - seaborn
+  - minimap2=2.28
