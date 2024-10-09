@@ -154,14 +154,16 @@ rule minimap2_paf_paired_end:
 rule compile_strobealign:
     output: "bin/strobealign-{name}"
     params:
-        commit=lambda wildcards: COMMITS[wildcards.name]
+        commit=lambda wildcards: COMMITS[wildcards.name],
+        commit_without_v=lambda wildcards: COMMITS[wildcards.name].removeprefix("v")
+
     threads: 4
     shell:
         """
         wget https://github.com/ksahlin/strobealign/archive/{params.commit}.zip
         unzip {params.commit}.zip
         rm {params.commit}.zip
-        cd strobealign-{params.commit}
+        cd strobealign-{params.commit_without_v}
         cmake -B build -DCMAKE_C_FLAGS="-march=native" -DCMAKE_CXX_FLAGS="-march=native"
         make -j {threads} -C build strobealign
         mv build/strobealign ../{output}
