@@ -133,7 +133,7 @@ def mason_simulator_parameters(wildcards):
     read_length = int(wildcards.read_length)
     if read_length == 500 and wildcards.sim == "sim5" and wildcards.genome == "drosophila":
         # Workaround for crash with length 500
-        result = "--illumina-read-length 485"
+        result = "--illumina-read-length 460"
     else:
         result = f"--illumina-read-length {read_length}"
     if read_length >= 250:
