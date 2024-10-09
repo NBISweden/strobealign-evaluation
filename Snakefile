@@ -152,10 +152,12 @@ rule mason_simulator:
         mason_simulator="bin/mason_simulator"
     params:
         extra=mason_simulator_parameters
+    threads: 4
     log: "logs/mason_simulator/{sim}-{genome}-{read_length}.log"
     shell:
         "ulimit -n 16384"  # Avoid "Uncaught exception of type MasonIOException: Could not open right/single-end output file."
         "\n{input.mason_simulator}"
+        " --num-threads {threads}"
         " -ir {input.fasta}"
         " -n {N_READS}"
         " -iv {input.vcf}"
