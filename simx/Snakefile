@@ -245,7 +245,7 @@ rule bam_accuracy:
     output:
         txt="results/{program}/{dataset}-{genome}-{read_length}/{ends}.bam.accuracy.txt"
     input:
-        truth="datasets/{dataset}/{genome}-{read_length}/truth.pe.bam",
+        truth="datasets/{dataset}/{genome}-{read_length}/truth.bam",
         bam="results/{program}/{dataset}-{genome}-{read_length}/{ends}.bam",
     params:
         only_r1=lambda w: " --only-r1" if w.ends == "se" else ""
@@ -258,7 +258,7 @@ rule paf_accuracy:
     output:
         txt="results/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.accuracy.txt"
     input:
-        truth="datasets/{dataset}/{genome}-{read_length}/truth.{ends}.bam",
+        truth="datasets/{dataset}/{genome}-{read_length}/truth.bam",
         paf="results/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.gz"
     shell:
         "python get_accuracy.py --truth {input.truth} --predicted_paf {input.paf} > {output.txt}.tmp"

@@ -133,10 +133,12 @@ rule get_accuracy:
     output:
         txt="{program}/{genome}-{read_length}/accuracy.{ends}.txt"
     input:
-        truth="datasets/{genome}-{read_length}/truth.{ends}.bam",
-        bam="{program}/{genome}-{read_length}/{ends}.bam"
+        truth="datasets/{genome}-{read_length}/truth.bam",
+        bam="{program}/{genome}-{read_length}/{ends}.bam",
+    params:
+        only_r1=lambda w: " --only-r1" if w.ends == "se" else ""
     shell:
-        "python get_accuracy.py --truth {input.truth} --predicted_sam {input.bam} > {output.txt}.tmp"
+        "python get_accuracy.py{params.only_r1} --truth {input.truth} --predicted_sam {input.bam} > {output.txt}.tmp"
         "\n mv -v {output.txt}.tmp {output.txt}"
 
 

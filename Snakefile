@@ -27,7 +27,7 @@ localrules:
 rule:
     input:
         expand("datasets/{sim}/{ds}/{r}.fastq.gz", sim=SIM, ds=DATASETS, r=(1, 2)),
-        expand("datasets/{sim}/{ds}/truth.{ends}.bam", sim=SIM, ds=DATASETS, ends=ENDS)
+        expand("datasets/{sim}/{ds}/truth.bam", sim=SIM, ds=DATASETS, ends=ENDS)
 
 # Download genomes
 
@@ -145,7 +145,7 @@ rule mason_simulator:
     output:
         r1_fastq="datasets/{sim}/{genome}-{read_length}/1.fastq.gz",
         r2_fastq="datasets/{sim}/{genome}-{read_length}/2.fastq.gz",
-        sam="datasets/{sim}/{genome}-{read_length}/truth.pe.bam"
+        bam="datasets/{sim}/{genome}-{read_length}/truth.bam"
     input:
         fasta="genomes/{genome}.fa",
         vcf=rules.mason_variator.output.vcf,
@@ -164,20 +164,11 @@ rule mason_simulator:
         " {params.extra}"
         " -o {output.r1_fastq}.tmp.fastq.gz"
         " -or {output.r2_fastq}.tmp.fastq.gz"
-        " -oa {output.sam}.tmp.bam"
+        " -oa {output.bam}.tmp.bam"
         " 2>&1 | tee {log}"
         "\nmv -v {output.r1_fastq}.tmp.fastq.gz {output.r1_fastq}"
         "\nmv -v {output.r2_fastq}.tmp.fastq.gz {output.r2_fastq}"
-        "\nmv -v {output.sam}.tmp.bam {output.sam}"
-
-
-rule single_end_truth:
-    output:
-        bam="datasets/{dataset}/truth.se.bam"
-    input:
-        bam="datasets/{dataset}/truth.pe.bam"
-    shell:
-        "samtools view -f 64 --remove-flags 235 -o {output.bam} {input.bam}"
+        "\nmv -v {output.bam}.tmp.bam {output.bam}"
 
 
 # Misc
