@@ -28,11 +28,27 @@ class ReferenceInterval:
     end: int
 
 
-def read_alignments(bam_path):
+def only_r1_iter(bam_iter):
+    """
+    Use only the R1 reads in the paired-end input BAM and present the records
+    as if they were from a single-end BAM.
+    """
+    for record in bam_iter:
+        if not record.is_read1:
+            continue
+        # Remove PAIRED,PROPER_PAIR,MUNMAP,MREVERSE,READ1,READ2 flags
+        record.flag = record.flag & ~235
+        yield record
+
+
+def read_alignments(bam_path, only_r1: bool):
     bam_path = AlignmentFile(bam_path, check_sq=False)
     read_positions = {}
 
-    for read in bam_path.fetch(until_eof=True):
+    bam_iter = bam_path.fetch(until_eof=True)
+    if only_r1:
+        bam_iter = only_r1_iter(bam_iter)
+    for read in bam_iter:
         if read.is_secondary:
             continue
         if read.flag == 0 or read.flag == 16:  # single end
@@ -272,6 +288,8 @@ def main(args):
             AlignmentFile(args.truth) as truth,
             AlignmentFile(args.predicted) as predicted,
         ):
+            if args.only_r1:
+                truth = only_r1_iter(truth)
             (
                 percent_aligned,
                 percent_correct,
@@ -280,7 +298,7 @@ def main(args):
                 correct_score_percentage,
             ) = get_iter_stats(truth, predicted, args.recompute_score)
     elif args.predicted_paf:
-        truth = read_alignments(args.truth)
+        truth = read_alignments(args.truth, args.only_r1)
         predicted, mapped_to_multiple_pos = read_paf(args.predicted_paf)
         percent_aligned, percent_correct, over_mapped, jacc = get_stats(
             truth, predicted
@@ -306,6 +324,7 @@ if __name__ == "__main__":
         description="Calc identity",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
+    parser.add_argument("--only-r1", default=False, action="store_true", help="Only use R1 reads from truth BAM")
     parser.add_argument("--recompute-score", default=False, action="store_true", help="Recompute score in *predicted* BAM. Default: Use score from AS tag")
     parser.add_argument("--truth", help="True SAM/BAM")
     parser.add_argument("--predicted", "--predicted_sam", help="Predicted SAM/BAM")
