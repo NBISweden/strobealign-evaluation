@@ -4,7 +4,7 @@
 # This creates the downloads/, datasets/ and genomes/ directories.
 # (downloads/ can be deleted.)
 
-N_READS = 10_000_000
+N_READS = 1_000_000
 
 # Genome 'ecoli50' disabled for now to avoid cluttering the plots
 GENOMES = ("drosophila", "maize", "CHM13", "rye")
