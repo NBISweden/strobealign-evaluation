@@ -78,7 +78,7 @@ rule bwa_mem_paired_end:
 rule minimap2_index:
     output: "genomes/{genome}.fa.mm2index"
     input: "genomes/{genome}.fa"
-    threads: 99
+    threads: 8
     shell:
         "minimap2 -t {threads} -k 21 -w 11 -d {output} {input}"
 
