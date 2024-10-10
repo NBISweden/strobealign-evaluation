@@ -235,8 +235,12 @@ def get_iter_stats(truth, predicted, recompute_predicted_score=False):
     for t, p in zip_longest(filter_bam(truth), filter_bam(predicted)):
         if t is None or p is None:
             raise ValueError("unequal number of records in the input files")
+
         if t.query_name != p.query_name:
-            raise ValueError(f"query name mismatch: {t.query_name} != {p.query_name}")
+            if p.query_name.endswith("/1") or p.query_name.endswith("/2"):
+                p.query_name = p.query_name[:-2]
+            if t.query_name != p.query_name:
+                raise ValueError(f"query name mismatch: {t.query_name} != {p.query_name}")
 
         n += 1
         if t.is_unmapped:  # TODO and not p.is_unmapped:
