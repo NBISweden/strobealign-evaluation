@@ -45,7 +45,7 @@ rule bwa_mem_single_end:
         fasta="genomes/{genome}.fa",
         index="genomes/{genome}.fa.bwt",
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
-    threads: 20
+    threads: 8
     log:
         "results/bwamem/{dataset}-{genome}-{read_length}/se.bam.log"
     shell:
@@ -63,7 +63,7 @@ rule bwa_mem_paired_end:
         index="genomes/{genome}.fa.bwt",
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
         r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
-    threads: 20
+    threads: 8
     log:
         "results/bwamem/{dataset}-{genome}-{read_length}/pe.bam.log"
     shell:
@@ -92,7 +92,7 @@ rule minimap2_single_end:
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
     log:
         "results/minimap2/{dataset}-{genome}-{read_length}/se.bam.log"
-    threads: 20
+    threads: 8
     shell:
         "/usr/bin/time -v minimap2 -t {threads} -a -x sr {input.index} {input.r1_fastq} 2> {log}.tmp"
         " | grep -v '^@PG'"
@@ -110,7 +110,7 @@ rule minimap2_paired_end:
         r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
     log:
         "results/minimap2/{dataset}-{genome}-{read_length}/pe.bam.log"
-    threads: 20
+    threads: 8
     shell:
         "/usr/bin/time -v minimap2 -t {threads} -a -x sr {input.index} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
         " | grep -v '^@PG'"
@@ -127,7 +127,7 @@ rule minimap2_paf_single_end:
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
     log:
         "results/minimap2/{dataset}-{genome}-{read_length}/se.paf.log"
-    threads: 20
+    threads: 8
     shell:
         "/usr/bin/time -v minimap2 -t {threads} -x sr {input.index} {input.r1_fastq} 2> {log}.tmp"
         " | igzip > {output.paf}.tmp.gz"
@@ -144,7 +144,7 @@ rule minimap2_paf_paired_end:
         r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
     log:
         "results/minimap2/{dataset}-{genome}-{read_length}/pe.paf.log"
-    threads: 20
+    threads: 8
     shell:
         "/usr/bin/time -v minimap2 -t {threads} -x sr {input.index} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
         " | igzip > {output.paf}.tmp.gz"
@@ -180,7 +180,7 @@ rule strobealign_paired_end:
         fasta="genomes/{genome}.fa",
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
         r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
-    threads: 20
+    threads: 8
     log:
         "results/strobealign-{program}/{dataset}-{genome}-{read_length}/pe.bam.log"
     shell:
@@ -198,7 +198,7 @@ rule strobealign_single_end:
         binary="bin/strobealign-{program}",
         fasta="genomes/{genome}.fa",
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
-    threads: 20
+    threads: 8
     log:
         "results/strobealign-{program}/{dataset}-{genome}-{read_length}/se.bam.log"
     shell:
@@ -217,7 +217,7 @@ rule strobealign_paf_paired_end:
         fasta="genomes/{genome}.fa",
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
         r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
-    threads: 20
+    threads: 8
     log:
         "results/strobealign-{program}/{dataset}-{genome}-{read_length}/pe.paf.log"
     shell:
@@ -233,7 +233,7 @@ rule strobealign_paf_single_end:
         binary="bin/strobealign-{program}",
         fasta="genomes/{genome}.fa",
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
-    threads: 20
+    threads: 8
     log:
         "results/strobealign-{program}/{dataset}-{genome}-{read_length}/se.paf.log"
     shell:
