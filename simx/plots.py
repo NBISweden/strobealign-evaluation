@@ -7,6 +7,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+import yaml
 
 
 def plot(
@@ -37,6 +38,7 @@ def plot(
         col="dataset",
         row="genome",
         facet_kws={"sharey": False},
+        hue_order=tools,
         #col_order=["drosophila", "maize", "CHM13", "rye"],   # TODO
         palette=palette,
     )
@@ -131,18 +133,33 @@ def plot_runtime(
 
 
 def main(args):
+    if args.config:
+        with open(args.config) as f:
+            config = yaml.safe_load(f)
+    else:
+        config = {}
+
     sns.set_style("whitegrid")
     palette = {
         "minimap2": "tab:blue",
         "bwamem": "tab:orange",
-        "strobealign_v071": "tab:green",
-        "strobealign_v0120_opt": "pink",
-        "strobealign_multicontext": "black",
-        "strobealign-main-3a97f6b": "tab:green",
-        "strobealign-mcs-4ed851a": "black",
+        # "strobealign_v071": "tab:green",
+        # "strobealign_v0120_opt": "pink",
+        # "strobealign_multicontext": "black",
     }
+
+    for commit in config.get("commits", []):
+        if "color" in commit:
+            palette["strobealign-" + commit["name"]] = commit["color"]
+
     read_lengths = [50, 75, 100, 150, 200, 300, 500]
-    tools = ["strobealign-main-3a97f6b", "strobealign-mcs-4ed851a", "bwamem"]
+    tools = [
+        "minimap2",
+        "bwamem",
+    ]
+    for commit in config["commits"]:
+        tools.append("strobealign-" + commit["name"])
+
     xlim = (40, 260)
     csv = args.csv
 
@@ -190,12 +207,13 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Calc identity",
+        description="Plot",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--title", "-t", help="Optional title")
+    parser.add_argument("--config", "-c", help="YAML configuration")
     parser.add_argument("csv", help="results file")
-    parser.add_argument("outfolder", help="outfolder to plots.")
+    parser.add_argument("outfolder", help="output folder")
     args = parser.parse_args()
 
     main(args)

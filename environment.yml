@@ -16,3 +16,4 @@ dependencies:
   - seaborn
   - minimap2=2.28
   - isa-l
+  - pyyaml

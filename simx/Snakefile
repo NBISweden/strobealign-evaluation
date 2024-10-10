@@ -310,7 +310,7 @@ rule concat_genome_csvs:
 
 rule plot:
     output: expand("plots/{{ends}}/{plot}.pdf", plot=PLOTS)
-    input: csv="results/{ends}.csv"
+    input: csv="results/{ends}.csv", config="config.yaml"
     params: title=lambda wildcards: "Single" if wildcards.ends == "se" else "Paired"
     shell:
-        "python3 plots.py -t '{params.title}-end reads' {input.csv} plots/{wildcards.ends}"
+        "python3 plots.py -c {input.config} -t '{params.title}-end reads' {input.csv} plots/{wildcards.ends}"
