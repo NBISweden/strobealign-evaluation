@@ -1,3 +1,5 @@
+configfile: "config.yaml"
+
 DATASETS = ("sim3", "sim4", "sim5")
 GENOMES = ("drosophila", "maize", "CHM13", "rye") # optional: "ecoli50"
 
@@ -5,16 +7,11 @@ READ_LENGTHS = (50, 75, 100, 150, 200, 300, 500)
 
 LIBRARIES = expand("{dataset}-{genome}-{read_length}", dataset=DATASETS, genome=GENOMES, read_length=READ_LENGTHS)
 ENDS = ("pe", "se")
-
-# Strobealign commits
-# The values need to be full SHA1 hashes
-COMMITS = {
-    "main-3a97f6b": "3a97f6b817824235a36ca8f9c5710ee533d3ad56",
-    "mcs-4ed851a": "4ed851adbe952a1f07c43bc0418fd071bcc6693e",
-}
-
-PROGRAMS = expand("strobealign-{commit}", commit=COMMITS) + ["bwamem", "minimap2"]
+COMMITS = config["commits"]
+PROGRAMS = expand("strobealign-{commit[name]}", commit=COMMITS) + ["bwamem", "minimap2"]
 PLOTS = ("accuracy", "aligned", "time", "memory")
+
+COMMIT_TO_HASH_MAP = {c["name"]: c["hash"] for c in COMMITS}
 
 localrules:
     result_csv, concat_csvs, concat_genome_csvs, plot
@@ -155,7 +152,7 @@ rule minimap2_paf_paired_end:
 rule compile_strobealign:
     output: "bin/strobealign-{name}"
     params:
-        commit=lambda wildcards: COMMITS[wildcards.name]
+        commit=lambda wildcards: COMMIT_TO_HASH_MAP[wildcards.name]
     threads: 4
     shell:
         """
