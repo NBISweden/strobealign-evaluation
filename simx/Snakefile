@@ -7,6 +7,7 @@ LIBRARIES = expand("{dataset}-{genome}-{read_length}", dataset=DATASETS, genome=
 ENDS = ("pe", "se")
 
 # Strobealign commits
+# The values need to be full SHA1 hashes
 COMMITS = {
     "main-3a97f6b": "3a97f6b817824235a36ca8f9c5710ee533d3ad56",
     "mcs-4ed851a": "4ed851adbe952a1f07c43bc0418fd071bcc6693e",
@@ -154,16 +155,14 @@ rule minimap2_paf_paired_end:
 rule compile_strobealign:
     output: "bin/strobealign-{name}"
     params:
-        commit=lambda wildcards: COMMITS[wildcards.name],
-        commit_without_v=lambda wildcards: COMMITS[wildcards.name].removeprefix("v")
-
+        commit=lambda wildcards: COMMITS[wildcards.name]
     threads: 4
     shell:
         """
         wget https://github.com/ksahlin/strobealign/archive/{params.commit}.zip
         unzip {params.commit}.zip
         rm {params.commit}.zip
-        cd strobealign-{params.commit_without_v}
+        cd strobealign-{params.commit}
         cmake -B build -DCMAKE_C_FLAGS="-march=native" -DCMAKE_CXX_FLAGS="-march=native"
         make -j {threads} -C build strobealign
         mv build/strobealign ../{output}
