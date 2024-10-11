@@ -281,6 +281,7 @@ rule result_csv:
         memory=$(awk '/Maximum resident/ {{print $NF/1048576}}' {input.log})
         indexing_time=$(awk '/Total time indexing:/ {{print $4}}' {input.log})
         mapping_time=$(awk '/Total time mapping:/ {{print $4}}' {input.log})
+        if test -z "${{mapping_time}}"; then mapping_time=$(sed -n -e 's|.* Real time: \\([1-9][0-9.]*\\) sec.*|\\1|p' {input.log}); fi
         echo ,${{mapping_time}},${{memory}} >> {output}.tmp
         mv {output.csv}.tmp {output.csv}
         """
