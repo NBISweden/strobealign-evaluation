@@ -258,8 +258,10 @@ rule paf_accuracy:
     input:
         truth="datasets/{dataset}/{genome}-{read_length}/truth.bam",
         paf="results/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.gz"
+    params:
+        only_r1=lambda w: " --only-r1" if w.ends == "se" else ""
     shell:
-        "python get_accuracy.py --truth {input.truth} --predicted_paf {input.paf} > {output.txt}.tmp"
+        "python get_accuracy.py{params.only_r1} --truth {input.truth} --predicted_paf {input.paf} > {output.txt}.tmp"
         "\n mv -v {output.txt}.tmp {output.txt}"
 
 
