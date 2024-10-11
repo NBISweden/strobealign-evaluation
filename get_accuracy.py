@@ -242,6 +242,11 @@ def get_iter_stats(truth, predicted, recompute_predicted_score=False):
             if t.query_name != p.query_name:
                 raise ValueError(f"query name mismatch: {t.query_name} != {p.query_name}")
 
+        if t.is_paired != p.is_paired:
+            PAIRED = {True: "paired", False: "single-end"}
+            raise ValueError(
+                f"Truth is {PAIRED[t.is_paired]} but predicted is {PAIRED[p.is_paired]}"
+            )
         n += 1
         if t.is_unmapped:  # TODO and not p.is_unmapped:
             over_mapped += 1
