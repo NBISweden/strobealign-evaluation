@@ -13,7 +13,6 @@ import yaml
 
 def plot(
     table,
-    pdf_path,
     palette,
     tools,
     read_lengths,
@@ -53,16 +52,14 @@ def plot(
     g.set(xlim=xlim, xticks=read_lengths)
     g.set_xticklabels(rotation=90, labels=read_lengths)
     g.tight_layout()
-    plt.savefig(pdf_path)
-    plt.close()
+    return g
 
 
 def plot_accuracy(
-    table, pdf_path, palette, tools, read_lengths, xlim=(0, 500), title=None
+    table, palette, tools, read_lengths, xlim=(0, 500), title=None
 ):
-    plot(
+    return plot(
         table,
-        pdf_path,
         palette,
         tools,
         read_lengths,
@@ -74,11 +71,10 @@ def plot_accuracy(
 
 
 def plot_percentage_aligned(
-    table, pdf_path, palette, tools, read_lengths, xlim=(0, 500), title=None
+    table, palette, tools, read_lengths, xlim=(0, 500), title=None
 ):
-    plot(
+    return plot(
         table,
-        pdf_path,
         palette,
         tools,
         read_lengths,
@@ -90,11 +86,10 @@ def plot_percentage_aligned(
 
 
 def plot_memory_usage(
-    table, pdf_path, palette, tools, read_lengths, xlim=(0, 500), title=None
+    table, palette, tools, read_lengths, xlim=(0, 500), title=None
 ):
-    plot(
+    return plot(
         table,
-        pdf_path,
         palette,
         tools,
         read_lengths,
@@ -106,11 +101,10 @@ def plot_memory_usage(
 
 
 def plot_runtime(
-    table, pdf_path, palette, tools, read_lengths, xlim=(0, 500), title=None
+    table, palette, tools, read_lengths, xlim=(0, 500), title=None
 ):
-    plot(
+    return plot(
         table,
-        pdf_path,
         palette,
         tools,
         read_lengths,
@@ -171,40 +165,36 @@ def main(args):
         title = "Single-end reads" if end == "se" else "Paired-end reads"
         plot_accuracy(
             table,
-            outfolder / f"{end}-accuracy.pdf",
             palette,
             tools,
             read_lengths,
             xlim=xlim,
             title=title,
-        )
+        ).savefig(outfolder / f"{end}-accuracy.pdf")
         plot_percentage_aligned(
             table,
-            outfolder / f"{end}-aligned.pdf",
             palette,
             tools,
             read_lengths,
             xlim=xlim,
             title=title,
-        )
+        ).savefig(outfolder / f"{end}-aligned.pdf")
         plot_runtime(
             table,
-            outfolder / f"{end}-time.pdf",
             palette,
             tools,
             read_lengths,
             xlim=xlim,
             title=title,
-        )
+        ).savefig(outfolder / f"{end}-time.pdf")
         plot_memory_usage(
             table,
-            outfolder / f"{end}-memory.pdf",
             palette,
             tools,
             read_lengths,
             xlim=xlim,
             title=title,
-        )
+        ).savefig(outfolder / f"{end}-memory.pdf")
 
 
 if __name__ == "__main__":
