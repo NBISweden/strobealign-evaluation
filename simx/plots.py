@@ -19,7 +19,7 @@ def plot(
     read_lengths,
     y: str,
     label: str,
-    linewidth=2.5,
+    linewidth=2,
     xlim=(0, 500),
     logscale: bool = False,
     title: Optional[str] = None,
@@ -58,7 +58,7 @@ def plot(
 
 
 def plot_accuracy(
-    table, pdf_path, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
+    table, pdf_path, palette, tools, read_lengths, xlim=(0, 500), title=None
 ):
     plot(
         table,
@@ -68,14 +68,13 @@ def plot_accuracy(
         read_lengths,
         y="accuracy",
         label="Accuracy (%)",
-        linewidth=linewidth,
         xlim=xlim,
         title=title,
     )
 
 
 def plot_percentage_aligned(
-    table, pdf_path, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
+    table, pdf_path, palette, tools, read_lengths, xlim=(0, 500), title=None
 ):
     plot(
         table,
@@ -85,14 +84,13 @@ def plot_percentage_aligned(
         read_lengths,
         y="aligned",
         label="Percentage aligned",
-        linewidth=linewidth,
         xlim=xlim,
         title=title,
     )
 
 
 def plot_memory_usage(
-    table, pdf_path, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
+    table, pdf_path, palette, tools, read_lengths, xlim=(0, 500), title=None
 ):
     plot(
         table,
@@ -102,14 +100,13 @@ def plot_memory_usage(
         read_lengths,
         y="memory",
         label="Memory usage (GB)",
-        linewidth=linewidth,
         xlim=xlim,
         title=title,
     )
 
 
 def plot_runtime(
-    table, pdf_path, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
+    table, pdf_path, palette, tools, read_lengths, xlim=(0, 500), title=None
 ):
     plot(
         table,
@@ -119,7 +116,6 @@ def plot_runtime(
         read_lengths,
         y="time",
         label="Time (sec)",
-        linewidth=linewidth,
         xlim=xlim,
         logscale=True,
         title=title,
@@ -172,7 +168,6 @@ def main(args):
         palette,
         tools,
         read_lengths,
-        linewidth=2.5,
         xlim=xlim,
         title=args.title,
     )
@@ -182,7 +177,6 @@ def main(args):
         palette,
         tools,
         read_lengths,
-        linewidth=2.5,
         xlim=xlim,
         title=args.title,
     )
@@ -192,7 +186,6 @@ def main(args):
         palette,
         tools,
         read_lengths,
-        linewidth=2.5,
         xlim=xlim,
         title=args.title,
     )
@@ -202,7 +195,6 @@ def main(args):
         palette,
         tools,
         read_lengths,
-        linewidth=2.5,
         xlim=xlim,
         title=args.title,
     )
