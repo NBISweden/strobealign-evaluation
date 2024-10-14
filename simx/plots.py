@@ -24,9 +24,6 @@ def plot(
     logscale: bool = False,
     title: Optional[str] = None,
 ):
-    matplotlib.rcParams.update({"font.size": 18})
-    sns.set(font_scale=1.2)
-    sns.set_style("whitegrid")
     g = sns.relplot(
         data=table,
         x="read_length",
@@ -159,6 +156,11 @@ def configure(config_path):
 
 
 def main(args):
+    # Global plot settings
+    matplotlib.rcParams.update({"font.size": 18})
+    sns.set(font_scale=1.2)
+    sns.set_style("whitegrid")
+
     palette, read_lengths, tools = configure(args.config)
     xlim = (40, 260)
     table = pd.read_csv(args.csv)
