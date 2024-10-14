@@ -1,6 +1,7 @@
 import os, sys
 import argparse
 import random
+from pathlib import Path
 from typing import Optional
 
 import matplotlib
@@ -59,9 +60,8 @@ def plot(
 
 
 def plot_accuracy(
-    table, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
+    table, pdf_path, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
 ):
-    pdf_path = os.path.join(outfolder, "accuracy.pdf")
     plot(
         table,
         pdf_path,
@@ -77,9 +77,8 @@ def plot_accuracy(
 
 
 def plot_percentage_aligned(
-    table, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
+    table, pdf_path, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
 ):
-    pdf_path = os.path.join(outfolder, "aligned.pdf")
     plot(
         table,
         pdf_path,
@@ -95,9 +94,8 @@ def plot_percentage_aligned(
 
 
 def plot_memory_usage(
-    table, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
+    table, pdf_path, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
 ):
-    pdf_path = os.path.join(outfolder, "memory.pdf")
     plot(
         table,
         pdf_path,
@@ -113,9 +111,8 @@ def plot_memory_usage(
 
 
 def plot_runtime(
-    table, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
+    table, pdf_path, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
 ):
-    pdf_path = os.path.join(outfolder, "time.pdf")
     plot(
         table,
         pdf_path,
@@ -165,9 +162,10 @@ def main(args):
     palette, read_lengths, tools = configure(args.config)
     xlim = (40, 260)
     table = pd.read_csv(args.csv)
+    outfolder = Path(args.outfolder)
     plot_accuracy(
         table,
-        args.outfolder,
+        outfolder / "accuracy.pdf",
         palette,
         tools,
         read_lengths,
@@ -177,7 +175,7 @@ def main(args):
     )
     plot_percentage_aligned(
         table,
-        args.outfolder,
+        outfolder / "aligned.pdf",
         palette,
         tools,
         read_lengths,
@@ -187,7 +185,7 @@ def main(args):
     )
     plot_runtime(
         table,
-        args.outfolder,
+        outfolder / "time.pdf",
         palette,
         tools,
         read_lengths,
@@ -197,7 +195,7 @@ def main(args):
     )
     plot_memory_usage(
         table,
-        args.outfolder,
+        outfolder / "memory.pdf",
         palette,
         tools,
         read_lengths,
