@@ -131,14 +131,13 @@ def plot_runtime(
     )
 
 
-def main(args):
-    if args.config:
-        with open(args.config) as f:
+def configure(config_path):
+    if config_path:
+        with open(config_path) as f:
             config = yaml.safe_load(f)
     else:
         config = {}
 
-    sns.set_style("whitegrid")
     palette = {
         "minimap2": "tab:blue",
         "bwamem": "tab:orange",
@@ -159,11 +158,12 @@ def main(args):
     for commit in config["commits"]:
         tools.append("strobealign-" + commit["name"])
 
-    xlim = (40, 260)
-    csv = args.csv
+    return palette, read_lengths, tools
 
 
 def main(args):
+    palette, read_lengths, tools = configure(args.config)
+    xlim = (40, 260)
     table = pd.read_csv(args.csv)
     plot_accuracy(
         table,
