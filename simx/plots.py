@@ -38,6 +38,7 @@ def plot(
         hue_order=tools,
         #col_order=["drosophila", "maize", "CHM13", "rye"],   # TODO
         palette=palette,
+        alpha=0.7,
     )
     g.figure.suptitle(title)
     g.set_axis_labels("Read length", label)

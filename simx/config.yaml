@@ -7,4 +7,4 @@ commits:
     color: "tab:green"
   - name: "mcs-022a721"
     hash: "022a7219880eb842449da8a65874a547ac58f0d1"
-    color: "black"
+    color: "#333"
