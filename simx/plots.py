@@ -11,7 +11,7 @@ import yaml
 
 
 def plot(
-    input_csv,
+    table,
     pdf_path,
     palette,
     tools,
@@ -26,9 +26,8 @@ def plot(
     matplotlib.rcParams.update({"font.size": 18})
     sns.set(font_scale=1.2)
     sns.set_style("whitegrid")
-    indata = pd.read_csv(input_csv)
     g = sns.relplot(
-        data=indata,
+        data=table,
         x="read_length",
         y=y,
         hue="tool",
@@ -60,11 +59,11 @@ def plot(
 
 
 def plot_accuracy(
-    input_csv, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
+    table, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
 ):
     pdf_path = os.path.join(outfolder, "accuracy.pdf")
     plot(
-        input_csv,
+        table,
         pdf_path,
         palette,
         tools,
@@ -78,11 +77,11 @@ def plot_accuracy(
 
 
 def plot_percentage_aligned(
-    input_csv, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
+    table, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
 ):
     pdf_path = os.path.join(outfolder, "aligned.pdf")
     plot(
-        input_csv,
+        table,
         pdf_path,
         palette,
         tools,
@@ -96,11 +95,11 @@ def plot_percentage_aligned(
 
 
 def plot_memory_usage(
-    input_csv, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
+    table, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
 ):
     pdf_path = os.path.join(outfolder, "memory.pdf")
     plot(
-        input_csv,
+        table,
         pdf_path,
         palette,
         tools,
@@ -114,11 +113,11 @@ def plot_memory_usage(
 
 
 def plot_runtime(
-    input_csv, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
+    table, outfolder, palette, tools, read_lengths, linewidth=2.5, xlim=(0, 500), title=None
 ):
     pdf_path = os.path.join(outfolder, "time.pdf")
     plot(
-        input_csv,
+        table,
         pdf_path,
         palette,
         tools,
@@ -163,8 +162,11 @@ def main(args):
     xlim = (40, 260)
     csv = args.csv
 
+
+def main(args):
+    table = pd.read_csv(args.csv)
     plot_accuracy(
-        csv,
+        table,
         args.outfolder,
         palette,
         tools,
@@ -174,7 +176,7 @@ def main(args):
         title=args.title,
     )
     plot_percentage_aligned(
-        csv,
+        table,
         args.outfolder,
         palette,
         tools,
@@ -184,7 +186,7 @@ def main(args):
         title=args.title,
     )
     plot_runtime(
-        csv,
+        table,
         args.outfolder,
         palette,
         tools,
@@ -194,7 +196,7 @@ def main(args):
         title=args.title,
     )
     plot_memory_usage(
-        csv,
+        table,
         args.outfolder,
         palette,
         tools,
