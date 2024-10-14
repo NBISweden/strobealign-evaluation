@@ -160,44 +160,51 @@ def main(args):
 
     palette, read_lengths, tools = configure(args.config)
     xlim = (40, 260)
-    table = pd.read_csv(args.csv)
+
+    tables = {
+        "se": pd.read_csv(args.se_csv),
+        "pe": pd.read_csv(args.pe_csv),
+    }
     outfolder = Path(args.outfolder)
-    plot_accuracy(
-        table,
-        outfolder / "accuracy.pdf",
-        palette,
-        tools,
-        read_lengths,
-        xlim=xlim,
-        title=args.title,
-    )
-    plot_percentage_aligned(
-        table,
-        outfolder / "aligned.pdf",
-        palette,
-        tools,
-        read_lengths,
-        xlim=xlim,
-        title=args.title,
-    )
-    plot_runtime(
-        table,
-        outfolder / "time.pdf",
-        palette,
-        tools,
-        read_lengths,
-        xlim=xlim,
-        title=args.title,
-    )
-    plot_memory_usage(
-        table,
-        outfolder / "memory.pdf",
-        palette,
-        tools,
-        read_lengths,
-        xlim=xlim,
-        title=args.title,
-    )
+    for end in ["se", "pe"]:
+        table = tables[end]
+        title = "Single-end reads" if end == "se" else "Paired-end reads"
+        plot_accuracy(
+            table,
+            outfolder / f"{end}-accuracy.pdf",
+            palette,
+            tools,
+            read_lengths,
+            xlim=xlim,
+            title=title,
+        )
+        plot_percentage_aligned(
+            table,
+            outfolder / f"{end}-aligned.pdf",
+            palette,
+            tools,
+            read_lengths,
+            xlim=xlim,
+            title=title,
+        )
+        plot_runtime(
+            table,
+            outfolder / f"{end}-time.pdf",
+            palette,
+            tools,
+            read_lengths,
+            xlim=xlim,
+            title=title,
+        )
+        plot_memory_usage(
+            table,
+            outfolder / f"{end}-memory.pdf",
+            palette,
+            tools,
+            read_lengths,
+            xlim=xlim,
+            title=title,
+        )
 
 
 if __name__ == "__main__":
@@ -205,9 +212,9 @@ if __name__ == "__main__":
         description="Plot",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--title", "-t", help="Optional title")
     parser.add_argument("--config", "-c", help="YAML configuration")
-    parser.add_argument("csv", help="results file")
+    parser.add_argument("se_csv", help="Single-end results file")
+    parser.add_argument("pe_csv", help="Paired-end results file")
     parser.add_argument("outfolder", help="output folder")
     args = parser.parse_args()
 

@@ -18,7 +18,7 @@ localrules:
 
 rule final:
     input:
-        expand("plots/{ends}/{plot}.pdf", ends=ENDS, plot=PLOTS)
+        expand("plots/{ends}-{plot}.pdf", ends=ENDS, plot=PLOTS)
 
 
 # Map reads with BWA-MEM
@@ -312,8 +312,10 @@ rule concat_genome_csvs:
         "( echo tool,type,dataset,genome,read_length,aligned,accuracy,overaligned,time,memory ; for f in {input}; do sed 1d $f; done ) > {output}"
 
 rule plot:
-    output: expand("plots/{{ends}}/{plot}.pdf", plot=PLOTS)
-    input: csv="results/{ends}.csv", config="config.yaml"
-    params: title=lambda wildcards: "Single" if wildcards.ends == "se" else "Paired"
+    output: expand("plots/{end}-{plot}.pdf", end=ENDS, plot=PLOTS)
+    input:
+        se_csv="results/se.csv",
+        pe_csv="results/pe.csv",
+        config="config.yaml",
     shell:
-        "python3 plots.py -c {input.config} -t '{params.title}-end reads' {input.csv} plots/{wildcards.ends}"
+        "python3 plots.py -c {input.config} {input.se_csv} {input.pe_csv} plots/"
