@@ -146,6 +146,14 @@ def configure(config_path):
     return palette, read_lengths, tools
 
 
+def read_table(se_csv, pe_csv):
+    table_se = pd.read_csv(se_csv)
+    table_pe = pd.read_csv(pe_csv)
+    table_se["ends"] = "se"
+    table_pe["ends"] = "pe"
+    return pd.concat([table_se, table_pe])
+
+
 def main(args):
     # Global plot settings
     matplotlib.rcParams.update({"font.size": 18})
@@ -155,16 +163,14 @@ def main(args):
     palette, read_lengths, tools = configure(args.config)
     xlim = (40, 260)
 
-    tables = {
-        "se": pd.read_csv(args.se_csv),
-        "pe": pd.read_csv(args.pe_csv),
-    }
+    table = read_table(args.se_csv, args.pe_csv)
+
     outfolder = Path(args.outfolder)
     for end in ["se", "pe"]:
-        table = tables[end]
         title = "Single-end reads" if end == "se" else "Paired-end reads"
+        end_table = table[table["ends"] == end]
         plot_accuracy(
-            table,
+            end_table,
             palette,
             tools,
             read_lengths,
@@ -172,7 +178,7 @@ def main(args):
             title=title,
         ).savefig(outfolder / f"{end}-accuracy.pdf")
         plot_percentage_aligned(
-            table,
+            end_table,
             palette,
             tools,
             read_lengths,
@@ -180,7 +186,7 @@ def main(args):
             title=title,
         ).savefig(outfolder / f"{end}-aligned.pdf")
         plot_runtime(
-            table,
+            end_table,
             palette,
             tools,
             read_lengths,
@@ -188,7 +194,7 @@ def main(args):
             title=title,
         ).savefig(outfolder / f"{end}-time.pdf")
         plot_memory_usage(
-            table,
+            end_table,
             palette,
             tools,
             read_lengths,
