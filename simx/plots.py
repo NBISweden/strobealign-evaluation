@@ -55,67 +55,6 @@ def plot(
     return g
 
 
-def plot_accuracy(
-    table, palette, tools, read_lengths, xlim=(0, 500), title=None
-):
-    return plot(
-        table,
-        palette,
-        tools,
-        read_lengths,
-        y="accuracy",
-        label="Accuracy (%)",
-        xlim=xlim,
-        title=title,
-    )
-
-
-def plot_percentage_aligned(
-    table, palette, tools, read_lengths, xlim=(0, 500), title=None
-):
-    return plot(
-        table,
-        palette,
-        tools,
-        read_lengths,
-        y="aligned",
-        label="Percentage aligned",
-        xlim=xlim,
-        title=title,
-    )
-
-
-def plot_memory_usage(
-    table, palette, tools, read_lengths, xlim=(0, 500), title=None
-):
-    return plot(
-        table,
-        palette,
-        tools,
-        read_lengths,
-        y="memory",
-        label="Memory usage (GB)",
-        xlim=xlim,
-        title=title,
-    )
-
-
-def plot_runtime(
-    table, palette, tools, read_lengths, xlim=(0, 500), title=None
-):
-    return plot(
-        table,
-        palette,
-        tools,
-        read_lengths,
-        y="time",
-        label="Time (sec)",
-        xlim=xlim,
-        logscale=True,
-        title=title,
-    )
-
-
 def configure(config_path):
     if config_path:
         with open(config_path) as f:
@@ -154,39 +93,48 @@ def read_table(se_csv, pe_csv):
     return pd.concat([table_se, table_pe])
 
 
-def plot_all(table, outfolder, palette, read_lengths, tools, xlim):
+def plot_all(df, outfolder, palette, read_lengths, tools, xlim):
     for end in ["se", "pe"]:
         title = "Single-end reads" if end == "se" else "Paired-end reads"
-        end_table = table[table["ends"] == end]
-        plot_accuracy(
-            end_table,
+        table = df[df["ends"] == end]
+        plot(
+            table,
             palette,
             tools,
             read_lengths,
+            y="accuracy",
+            label="Accuracy (%)",
             xlim=xlim,
             title=title,
         ).savefig(outfolder / f"{end}-accuracy.pdf")
-        plot_percentage_aligned(
-            end_table,
+        plot(
+            table,
             palette,
             tools,
             read_lengths,
+            y="aligned",
+            label="Percentage aligned",
             xlim=xlim,
             title=title,
         ).savefig(outfolder / f"{end}-aligned.pdf")
-        plot_runtime(
-            end_table,
+        plot(
+            table,
             palette,
             tools,
             read_lengths,
+            y="time",
+            label="Time (sec)",
             xlim=xlim,
+            logscale=True,
             title=title,
         ).savefig(outfolder / f"{end}-time.pdf")
-        plot_memory_usage(
-            end_table,
+        plot(
+            table,
             palette,
             tools,
             read_lengths,
+            y="memory",
+            label="Memory usage (GB)",
             xlim=xlim,
             title=title,
         ).savefig(outfolder / f"{end}-memory.pdf")
