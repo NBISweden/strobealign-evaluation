@@ -11,6 +11,15 @@ import pandas as pd
 import yaml
 
 
+MEASUREMENT_TYPES =  [
+    # column name, label, logscale
+    ("accuracy", "Accuracy (%)", False),
+    ("aligned", "Percentage aligned", False),
+    ("time", "Time (sec)", True),
+    ("memory", "Memory usage (GB)", False),
+]
+
+
 def plot(
     table,
     palette,
@@ -18,6 +27,7 @@ def plot(
     read_lengths,
     y: str,
     label: str,
+    row: str = "genome",
     linewidth=2,
     xlim=(0, 500),
     logscale: bool = False,
@@ -32,7 +42,7 @@ def plot(
         linewidth=linewidth,
         kind="line",
         col="dataset",
-        row="genome",
+        row=row,
         facet_kws={"sharey": False},
         hue_order=tools,
         #col_order=["drosophila", "maize", "CHM13", "rye"],   # TODO
@@ -93,27 +103,40 @@ def read_table(se_csv, pe_csv):
     return pd.concat([table_se, table_pe])
 
 
-def plot_all(df, outfolder, palette, read_lengths, tools, xlim):
-    for end in ["se", "pe"]:
-        title = "Single-end reads" if end == "se" else "Paired-end reads"
-        table = df[df["ends"] == end]
-
-        for y, label, logscale in [
-            ("accuracy", "Accuracy (%)", False),
-            ("aligned", "Percentage aligned", False),
-            ("time", "Time (sec)", True),
-            ("memory", "Memory usage (GB)", False),
-        ]:
+def plot_ends(df, outfolder, palette, read_lengths, tools, xlim):
+    for ends, table in df.groupby("ends"):
+        title = "Single-end reads" if ends == "se" else "Paired-end reads"
+        for y, label, logscale in MEASUREMENT_TYPES:
             plot(
                 table,
                 palette,
                 tools,
                 read_lengths,
                 y=y,
+                logscale=logscale,
+                row="genome",
                 label=label,
                 xlim=xlim,
                 title=title,
-            ).savefig(outfolder / f"{end}-{y}.pdf")
+            ).savefig(outfolder / f"ends-{ends}-{y}.pdf")
+
+
+def plot_genomes(df, outfolder, palette, read_lengths, tools, xlim):
+    for genome, table in df.groupby("genome"):
+        for y, label, logscale in MEASUREMENT_TYPES:
+            title = f"{genome} {label}"
+            plot(
+                table,
+                palette,
+                tools,
+                read_lengths,
+                y=y,
+                logscale=logscale,
+                row="ends",
+                label=label,
+                xlim=xlim,
+                title=title,
+            ).savefig(outfolder / f"genome-{genome}-{y}.pdf")
 
 
 def main(args):
@@ -127,7 +150,10 @@ def main(args):
 
     table = read_table(args.se_csv, args.pe_csv)
     outfolder = Path(args.outfolder)
-    plot_all(table, outfolder, palette, read_lengths, tools, xlim)
+    if args.genome:
+        plot_genomes(table, outfolder, palette, read_lengths, tools, xlim)
+    else:
+        plot_ends(table, outfolder, palette, read_lengths, tools, xlim)
 
 
 if __name__ == "__main__":
@@ -136,6 +162,7 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--config", "-c", help="YAML configuration")
+    parser.add_argument("--genome", action="store_true", help="Create genome-specific plots (with both single-end and paired-end measurements)")
     parser.add_argument("se_csv", help="Single-end results file")
     parser.add_argument("pe_csv", help="Paired-end results file")
     parser.add_argument("outfolder", help="output folder")
