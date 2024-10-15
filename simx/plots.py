@@ -97,47 +97,23 @@ def plot_all(df, outfolder, palette, read_lengths, tools, xlim):
     for end in ["se", "pe"]:
         title = "Single-end reads" if end == "se" else "Paired-end reads"
         table = df[df["ends"] == end]
-        plot(
-            table,
-            palette,
-            tools,
-            read_lengths,
-            y="accuracy",
-            label="Accuracy (%)",
-            xlim=xlim,
-            title=title,
-        ).savefig(outfolder / f"{end}-accuracy.pdf")
-        plot(
-            table,
-            palette,
-            tools,
-            read_lengths,
-            y="aligned",
-            label="Percentage aligned",
-            xlim=xlim,
-            title=title,
-        ).savefig(outfolder / f"{end}-aligned.pdf")
-        plot(
-            table,
-            palette,
-            tools,
-            read_lengths,
-            y="time",
-            label="Time (sec)",
-            xlim=xlim,
-            logscale=True,
-            title=title,
-        ).savefig(outfolder / f"{end}-time.pdf")
-        plot(
-            table,
-            palette,
-            tools,
-            read_lengths,
-            y="memory",
-            label="Memory usage (GB)",
-            xlim=xlim,
-            title=title,
-        ).savefig(outfolder / f"{end}-memory.pdf")
+
+        for y, label, logscale in [
+            ("accuracy", "Accuracy (%)", False),
+            ("aligned", "Percentage aligned", False),
+            ("time", "Time (sec)", True),
+            ("memory", "Memory usage (GB)", False),
+        ]:
+            plot(
+                table,
+                palette,
+                tools,
+                read_lengths,
+                y=y,
+                label=label,
+                xlim=xlim,
+                title=title,
+            ).savefig(outfolder / f"{end}-{y}.pdf")
 
 
 def main(args):
