@@ -154,18 +154,7 @@ def read_table(se_csv, pe_csv):
     return pd.concat([table_se, table_pe])
 
 
-def main(args):
-    # Global plot settings
-    matplotlib.rcParams.update({"font.size": 18})
-    sns.set(font_scale=1.2)
-    sns.set_style("whitegrid")
-
-    palette, read_lengths, tools = configure(args.config)
-    xlim = (40, 260)
-
-    table = read_table(args.se_csv, args.pe_csv)
-
-    outfolder = Path(args.outfolder)
+def plot_all(table, outfolder, palette, read_lengths, tools, xlim):
     for end in ["se", "pe"]:
         title = "Single-end reads" if end == "se" else "Paired-end reads"
         end_table = table[table["ends"] == end]
@@ -201,6 +190,20 @@ def main(args):
             xlim=xlim,
             title=title,
         ).savefig(outfolder / f"{end}-memory.pdf")
+
+
+def main(args):
+    # Global plot settings
+    matplotlib.rcParams.update({"font.size": 18})
+    sns.set(font_scale=1.2)
+    sns.set_style("whitegrid")
+
+    palette, read_lengths, tools = configure(args.config)
+    xlim = (40, 260)
+
+    table = read_table(args.se_csv, args.pe_csv)
+    outfolder = Path(args.outfolder)
+    plot_all(table, outfolder, palette, read_lengths, tools, xlim)
 
 
 if __name__ == "__main__":
