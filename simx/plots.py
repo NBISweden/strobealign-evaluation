@@ -24,12 +24,12 @@ LINEWIDTH = 3
 def plot(
     table,
     palette,
-    tools,
+    tools: dict[str, str],
     read_lengths,
     y: str,
     label: str,
     row: str = "genome",
-    linewidth=2,
+    linewidth=1.5,
     xlim=(0, 500),
     logscale: bool = False,
     title: Optional[str] = None,
@@ -46,12 +46,24 @@ def plot(
         row=row,
         facet_kws={"sharey": False},
         hue_order=tools,
-        #col_order=["drosophila", "maize", "CHM13", "rye"],   # TODO
+        #col_order=["drosophila", "maize", "CHM13", "rye"],   # unused
         palette=palette,
         alpha=0.7,
     )
     g.figure.suptitle(title)
     g.set_axis_labels("Read length", label)
+    legend_labels = ["Tool:"] + [name for key, name in tools.items()] + ["Type:", "align", "map"]
+    sns.move_legend(
+        g,
+        loc="upper left",
+        bbox_to_anchor=(0, 0),
+        #facecolor="white",
+        frameon=True,
+        framealpha=1,
+        ncols=len(legend_labels),
+        labels=legend_labels,
+    )
+
     if logscale:
         g.set(yscale="log")
         g.set(
@@ -83,15 +95,16 @@ def configure(config_path):
 
     for commit in config.get("commits", []):
         if "color" in commit:
-            palette["strobealign-" + commit["name"]] = commit["color"]
+            palette["strobealign-" + commit["key"]] = commit["color"]
 
     read_lengths = [50, 75, 100, 150, 200, 300, 500]
-    tools = [
-        "minimap2",
-        "bwamem",
-    ]
+    # map short tool names to display names
+    tools = {
+        "minimap2": "minimap2",
+        "bwamem": "BWA-MEM",
+    }
     for commit in config["commits"]:
-        tools.append("strobealign-" + commit["name"])
+        tools["strobealign-" + commit["key"]] = commit["name"]
 
     return palette, read_lengths, tools
 
@@ -128,7 +141,7 @@ def plot_ends(df, outfolder, palette, read_lengths, tools, xlim, linewidth):
 def plot_genomes(df, outfolder, palette, read_lengths, tools, xlim, linewidth):
     for genome, table in df.groupby("genome"):
         for y, label, logscale in MEASUREMENT_TYPES:
-            title = f"{genome} {label}"
+            title = f"{label} – {genome}"
             fig = plot(
                 table,
                 palette,

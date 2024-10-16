@@ -2,9 +2,11 @@
 
 # Strobealign commits
 commits:
-  - name: "0.14.0"
+  - key: "0.14.0"
     hash: "b3b8f485119ddb8c18d071f45819200cacbbf168"
     color: "tab:green"
-  - name: "mcs-022a721"
+    name: "strobealign 0.14.0"  # displayed in plots
+  - key: "mcs-022a721"
     hash: "022a7219880eb842449da8a65874a547ac58f0d1"
     color: "#333"
+    name: "strobealign MCS"
