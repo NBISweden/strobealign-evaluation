@@ -14,11 +14,12 @@ PLOTS = ("accuracy", "aligned", "time", "memory")
 COMMIT_TO_HASH_MAP = {c["name"]: c["hash"] for c in COMMITS}
 
 localrules:
-    result_csv, concat_csvs, concat_genome_csvs, plot
+    result_csv, concat_csvs, concat_genome_csvs, plot_ends, plot_genomes
 
 rule final:
     input:
-        expand("plots/{ends}-{plot}.pdf", ends=ENDS, plot=PLOTS)
+        expand("plots/ends-{ends}-{plot}.pdf", ends=ENDS, plot=PLOTS),
+        expand("plots/genome-{genome}-{plot}.pdf", genome=GENOMES, plot=PLOTS)
 
 
 # Map reads with BWA-MEM
@@ -311,11 +312,20 @@ rule concat_genome_csvs:
     shell:
         "( echo tool,type,dataset,genome,read_length,aligned,accuracy,overaligned,time,memory ; for f in {input}; do sed 1d $f; done ) > {output}"
 
-rule plot:
-    output: expand("plots/{end}-{plot}.pdf", end=ENDS, plot=PLOTS)
+rule plot_ends:
+    output: expand("plots/ends-{end}-{plot}.pdf", end=ENDS, plot=PLOTS)
     input:
         se_csv="results/se.csv",
         pe_csv="results/pe.csv",
         config="config.yaml",
     shell:
-        "python3 plots.py -c {input.config} {input.se_csv} {input.pe_csv} plots/"
+        "python plots.py -c {input.config} {input.se_csv} {input.pe_csv} plots/"
+
+rule plot_genomes:
+    output: expand("plots/genome-{genome}-{plot}.pdf", genome=GENOMES, plot=PLOTS)
+    input:
+        se_csv="results/se.csv",
+        pe_csv="results/pe.csv",
+        config="config.yaml",
+    shell:
+        "python plots.py --genome -c {input.config} {input.se_csv} {input.pe_csv} plots/"
