@@ -153,7 +153,7 @@ def main(args):
     sns.set_style("whitegrid")
 
     palette, read_lengths, tools = configure(args.config)
-    xlim = (40, 260)
+    xlim = (40, 510)
 
     table = read_table(args.se_csv, args.pe_csv)
     outfolder = Path(args.outfolder)
