@@ -18,6 +18,7 @@ MEASUREMENT_TYPES =  [
     ("time", "Time (sec)", True),
     ("memory", "Memory usage (GB)", False),
 ]
+LINEWIDTH = 3
 
 
 def plot(
@@ -103,11 +104,11 @@ def read_table(se_csv, pe_csv):
     return pd.concat([table_se, table_pe])
 
 
-def plot_ends(df, outfolder, palette, read_lengths, tools, xlim):
+def plot_ends(df, outfolder, palette, read_lengths, tools, xlim, linewidth):
     for ends, table in df.groupby("ends"):
         title = "Single-end reads" if ends == "se" else "Paired-end reads"
         for y, label, logscale in MEASUREMENT_TYPES:
-            plot(
+            fig = plot(
                 table,
                 palette,
                 tools,
@@ -118,14 +119,17 @@ def plot_ends(df, outfolder, palette, read_lengths, tools, xlim):
                 label=label,
                 xlim=xlim,
                 title=title,
-            ).savefig(outfolder / f"ends-{ends}-{y}.pdf")
+                linewidth=linewidth,
+            )
+            if outfolder is not None:
+                fig.savefig(outfolder / f"ends-{ends}-{y}.pdf")
 
 
-def plot_genomes(df, outfolder, palette, read_lengths, tools, xlim):
+def plot_genomes(df, outfolder, palette, read_lengths, tools, xlim, linewidth):
     for genome, table in df.groupby("genome"):
         for y, label, logscale in MEASUREMENT_TYPES:
             title = f"{genome} {label}"
-            plot(
+            fig = plot(
                 table,
                 palette,
                 tools,
@@ -136,7 +140,10 @@ def plot_genomes(df, outfolder, palette, read_lengths, tools, xlim):
                 label=label,
                 xlim=xlim,
                 title=title,
-            ).savefig(outfolder / f"genome-{genome}-{y}.pdf")
+                linewidth=linewidth,
+            )
+            if outfolder is not None:
+                fig.savefig(outfolder / f"genome-{genome}-{y}.pdf")
 
 
 def main(args):
@@ -151,9 +158,9 @@ def main(args):
     table = read_table(args.se_csv, args.pe_csv)
     outfolder = Path(args.outfolder)
     if args.genome:
-        plot_genomes(table, outfolder, palette, read_lengths, tools, xlim)
+        plot_genomes(table, outfolder, palette, read_lengths, tools, xlim, LINEWIDTH)
     else:
-        plot_ends(table, outfolder, palette, read_lengths, tools, xlim)
+        plot_ends(table, outfolder, palette, read_lengths, tools, xlim, LINEWIDTH)
 
 
 if __name__ == "__main__":
