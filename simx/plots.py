@@ -148,8 +148,8 @@ def plot_genomes(df, outfolder, palette, read_lengths, tools, xlim, linewidth):
 
 def main(args):
     # Global plot settings
-    matplotlib.rcParams.update({"font.size": 18})
-    sns.set(font_scale=1.2)
+    #matplotlib.rcParams.update({"font.size": 18})
+    sns.set(font_scale=1.4)
     sns.set_style("whitegrid")
 
     palette, read_lengths, tools = configure(args.config)
