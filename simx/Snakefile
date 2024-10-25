@@ -47,6 +47,7 @@ rule bwa_mem_single_end:
     log:
         "results/bwamem/{dataset}-{genome}-{read_length}/se.bam.log"
     shell:
+        "cat {input} > /dev/null; "
         "/usr/bin/time -v bwa mem -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp"
         " | grep -v '^@PG'"
         " | samtools view --no-PG -o {output.bam}.tmp.bam -"
@@ -65,6 +66,7 @@ rule bwa_mem_paired_end:
     log:
         "results/bwamem/{dataset}-{genome}-{read_length}/pe.bam.log"
     shell:
+        "cat {input} > /dev/null; "
         "/usr/bin/time -v bwa mem -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
         " | grep -v '^@PG'"
         " | samtools view --no-PG -o {output.bam}.tmp.bam -"
@@ -92,6 +94,7 @@ rule minimap2_single_end:
         "results/minimap2/{dataset}-{genome}-{read_length}/se.bam.log"
     threads: 8
     shell:
+        "cat {input} > /dev/null; "
         "/usr/bin/time -v minimap2 -t {threads} -a -x sr {input.index} {input.r1_fastq} 2> {log}.tmp"
         " | grep -v '^@PG'"
         " | samtools view --no-PG -o {output.bam}.tmp.bam -"
@@ -110,6 +113,7 @@ rule minimap2_paired_end:
         "results/minimap2/{dataset}-{genome}-{read_length}/pe.bam.log"
     threads: 8
     shell:
+        "cat {input} > /dev/null; "
         "/usr/bin/time -v minimap2 -t {threads} -a -x sr {input.index} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
         " | grep -v '^@PG'"
         " | samtools view --no-PG -o {output.bam}.tmp.bam -"
@@ -127,6 +131,7 @@ rule minimap2_paf_single_end:
         "results/minimap2/{dataset}-{genome}-{read_length}/se.paf.log"
     threads: 8
     shell:
+        "cat {input} > /dev/null; "
         "/usr/bin/time -v minimap2 -t {threads} -x sr {input.index} {input.r1_fastq} 2> {log}.tmp"
         " | igzip > {output.paf}.tmp.gz"
         "\n mv -v {output.paf}.tmp.gz {output.paf}"
@@ -144,6 +149,7 @@ rule minimap2_paf_paired_end:
         "results/minimap2/{dataset}-{genome}-{read_length}/pe.paf.log"
     threads: 8
     shell:
+        "cat {input} > /dev/null; "
         "/usr/bin/time -v minimap2 -t {threads} -x sr {input.index} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
         " | igzip > {output.paf}.tmp.gz"
         "\n mv -v {output.paf}.tmp.gz {output.paf}"
@@ -182,6 +188,7 @@ rule strobealign_paired_end:
     log:
         "results/strobealign-{program}/{dataset}-{genome}-{read_length}/pe.bam.log"
     shell:
+        "cat {input} > /dev/null; "
         "/usr/bin/time -v bin/strobealign-{wildcards.program} -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
         " | grep -v '^@PG'"
         " | samtools view --no-PG -o {output.bam}.tmp.bam -"
@@ -200,6 +207,7 @@ rule strobealign_single_end:
     log:
         "results/strobealign-{program}/{dataset}-{genome}-{read_length}/se.bam.log"
     shell:
+        "cat {input} > /dev/null; "
         "/usr/bin/time -v bin/strobealign-{wildcards.program} -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp"
         " | grep -v '^@PG'"
         " | samtools view --no-PG -o {output.bam}.tmp.bam -"
@@ -219,6 +227,7 @@ rule strobealign_paf_paired_end:
     log:
         "results/strobealign-{program}/{dataset}-{genome}-{read_length}/pe.paf.log"
     shell:
+        "cat {input} > /dev/null; "
         "/usr/bin/time -v bin/strobealign-{wildcards.program} -x -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp | igzip > {output.paf}.tmp.gz"
         "\n mv -v {output.paf}.tmp.gz {output.paf}"
         "\n mv -v {log}.tmp {log}"
@@ -235,6 +244,7 @@ rule strobealign_paf_single_end:
     log:
         "results/strobealign-{program}/{dataset}-{genome}-{read_length}/se.paf.log"
     shell:
+        "cat {input} > /dev/null; "
         "/usr/bin/time -v bin/strobealign-{wildcards.program} -x -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp | igzip > {output.paf}.tmp.gz"
         "\n mv -v {output.paf}.tmp.gz {output.paf}"
         "\n mv -v {log}.tmp {log}"
