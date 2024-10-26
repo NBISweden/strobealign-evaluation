@@ -1,12 +1,10 @@
 # SLURM profile to be used with 'snakemake --profile=slurm'
 
-#executor: slurm
-
 slurm: true
 
 default-resources:
-  slurm_account: XXXXX
-  slurm_partition: shared
+  slurm_account: XXX
+  slurm_partition: YYY
   runtime: 120
   mem_mb: 2000
 
@@ -16,7 +14,7 @@ set-resources:
     mem_mb: 2000
 
   mason_simulator:
-    mem_mb: 20000
+    mem_mb: 8000
     runtime: 2880
 
   bwa_index:
@@ -24,7 +22,7 @@ set-resources:
     runtime: 360
 
   compile_strobealign:
-    mem_mb: 4000
+    mem_mb: 8000
 
   bam_accuracy:
     mem_mb: 2000
@@ -34,11 +32,53 @@ set-resources:
     mem_mb: 2000
     runtime: 30
 
-#set-threads:
-#  my-example-rule: 10
+  bwa_mem_paired_end:
+    mem_mb: 32000
+    cpus_per_task: 20
+
+  bwa_mem_single_end:
+    mem_mb: 32000
+    cpus_per_task: 20
+
+  minimap2_index:
+    mem_mb: 32000
+
+  minimap2_paf_paired_end:
+    mem_mb: 24000
+    cpus_per_task: 20
+
+  minimap2_paf_single_end:
+    mem_mb: 24000
+    cpus_per_task: 20
+
+  minimap2_paired_end:
+    mem_mb: 24000
+    cpus_per_task: 20
+
+  minimap2_single_end:
+    mem_mb: 24000
+    cpus_per_task: 20
+
+  paf_accuracy:
+    mem_mb: 2000
+
+  strobealign_paf_paired_end:
+    mem_mb: 38000
+    cpus_per_task: 20
+
+  strobealign_paf_single_end:
+    mem_mb: 38000
+    cpus_per_task: 20
+
+  strobealign_paired_end:
+    mem_mb: 38000
+    cpus_per_task: 20
+
+  strobealign_single_end:
+    mem_mb: 38000
+    cpus_per_task: 20
 
 rerun-triggers: mtime
 jobs: 1000
-cores: 4
+cores: 8
 printshellcmds: true
-#software-deployment-method: conda
