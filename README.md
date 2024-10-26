@@ -6,12 +6,17 @@ This repository provides runnable workflows for evaluating
 The following workflows are available:
 
 - `Snakefile`: Downloads reference genomes and generates libraries of simulated
-  reads
+  reads, grouped into three datasets named sim3, sim4, sim5 (with increasing
+  mutaton rates). This workflow needs to be run as a prerequisite for the
+  others.
 - `minmax/Snakefile`: Reproduces the min/max evaluation experiments in the paper
   "Designing efficient randstrobes for sequence similarity
   analyses" by Karami et al., 2023. (see `minmax/README.md`)
-- `simx/Snakefile`: Run strobealign and BWA-MEM on all datasets
-  (sim3, sim4, sim5), measure accuarcy, and plot the results.
+- `simx/Snakefile`: Run strobealign, minimap2 and BWA-MEM on all datasets
+  (sim3, sim4, sim5), measure accuracy, and plot the results.
+- `mcs/Snakefile`: Reproduces the read alignment benchmark in the paper
+  "Multi-context seeds enable fast and high-accuracy read mapping" by
+  Tolstoganov et al., 2024 (see `mcs/README.md`).
 
 
 ## Datasets
