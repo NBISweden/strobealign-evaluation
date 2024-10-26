@@ -109,14 +109,6 @@ def configure(config_path):
     return palette, read_lengths, tools
 
 
-def read_table(se_csv, pe_csv):
-    table_se = pd.read_csv(se_csv)
-    table_pe = pd.read_csv(pe_csv)
-    table_se["ends"] = "se"
-    table_pe["ends"] = "pe"
-    return pd.concat([table_se, table_pe])
-
-
 def plot_ends(df, outfolder, palette, read_lengths, tools, xlim, linewidth):
     for ends, table in df.groupby("ends"):
         title = "Single-end reads" if ends == "se" else "Paired-end reads"
@@ -168,7 +160,7 @@ def main(args):
     palette, read_lengths, tools = configure(args.config)
     xlim = (40, 510)
 
-    table = read_table(args.se_csv, args.pe_csv)
+    table = pd.read_csv(args.csv)
     outfolder = Path(args.outfolder)
     if args.genome:
         plot_genomes(table, outfolder, palette, read_lengths, tools, xlim, LINEWIDTH)
@@ -183,8 +175,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--config", "-c", help="YAML configuration")
     parser.add_argument("--genome", action="store_true", help="Create genome-specific plots (with both single-end and paired-end measurements)")
-    parser.add_argument("se_csv", help="Single-end results file")
-    parser.add_argument("pe_csv", help="Paired-end results file")
+    parser.add_argument("csv", help="Results file")
     parser.add_argument("outfolder", help="output folder")
     args = parser.parse_args()
 
