@@ -1,3 +1,17 @@
+#!/usr/bin/env python3
+# If you run this script with `pipx run plots.py`, it will read the following
+# inline script metadata and install the necessary dependencies into a
+# temporary virtual enviroment
+#
+# /// script
+# dependencies = [
+#   "matplotlib",
+#   "seaborn",
+#   "pandas",
+#   "pyyaml",
+# ]
+# ///
+
 import os, sys
 import argparse
 import random
