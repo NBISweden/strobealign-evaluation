@@ -1,13 +1,12 @@
 configfile: "config.yaml"
 
-DATASETS = ("sim3", "sim4", "sim5")
-GENOMES = ("drosophila", "maize", "CHM13", "rye") # optional: "ecoli50"
-
-READ_LENGTHS = (50, 75, 100, 150, 200, 300, 500)
+DATASETS = config["datasets"]
+GENOMES = config["genomes"]
+READ_LENGTHS = config["read-lengths"]
+COMMITS = config["commits"]
 
 LIBRARIES = expand("{dataset}-{genome}-{read_length}", dataset=DATASETS, genome=GENOMES, read_length=READ_LENGTHS)
 ENDS = ("se", "pe")
-COMMITS = config["commits"]
 PROGRAMS = expand("strobealign-{commit[key]}", commit=COMMITS) + ["bwamem", "minimap2"]
 PLOTS = ("accuracy", "aligned", "time", "memory")
 

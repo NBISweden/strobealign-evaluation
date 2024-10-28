@@ -1,6 +1,26 @@
-# For color names, see https://matplotlib.org/stable/gallery/color/named_colors.html
+datasets:
+  - sim3
+  - sim4
+  - sim5
+
+genomes:
+  - drosophila
+  - maize
+  - CHM13
+  - rye
+  #- ecoli50
+
+read-lengths:
+  - 50
+  - 75
+  - 100
+  - 150
+  - 200
+  - 300
+  - 500
 
 # Strobealign commits
+# For color names, see https://matplotlib.org/stable/gallery/color/named_colors.html
 commits:
   - key: "0.14.0"
     hash: "b3b8f485119ddb8c18d071f45819200cacbbf168"
