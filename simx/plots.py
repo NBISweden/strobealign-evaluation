@@ -32,7 +32,6 @@ MEASUREMENT_TYPES =  [
     ("time", "Time (sec)", True),
     ("memory", "Memory usage (GB)", False),
 ]
-LINEWIDTH = 3
 
 
 def plot(
@@ -179,9 +178,9 @@ def main(args):
     table = pd.read_csv(args.csv)
     outfolder = Path(args.outfolder)
     if args.genome:
-        plot_genomes(table, outfolder, palette, read_lengths, tools, xlim, LINEWIDTH)
+        plot_genomes(table, outfolder, palette, read_lengths, tools, xlim, args.linewidth)
     else:
-        plot_ends(table, outfolder, palette, read_lengths, tools, xlim, LINEWIDTH)
+        plot_ends(table, outfolder, palette, read_lengths, tools, xlim, args.linewidth)
 
 
 if __name__ == "__main__":
@@ -190,6 +189,7 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--config", "-c", help="YAML configuration")
+    parser.add_argument("--linewidth", type=int, default=3)
     parser.add_argument("--genome", action="store_true", help="Create genome-specific plots (with both single-end and paired-end measurements)")
     parser.add_argument("csv", help="Results file")
     parser.add_argument("outfolder", help="output folder")
