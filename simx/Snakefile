@@ -363,6 +363,7 @@ rule result_csv:
         indexing_time=$(awk '/Total time indexing:/ {{print $4}}' {input.log})
         mapping_time=$(awk '/Total time mapping:/ {{print $4}}' {input.log})
         if test -z "${{mapping_time}}"; then mapping_time=$(sed -n -e 's|.* Real time: \\([1-9][0-9.]*\\) sec.*|\\1|p' {input.log}); fi
+        if test -z "${{mapping_time}}"; then mapping_time=$(awk '/^Processing query/ && $3 >= 10000 && t == 0 {{t=substr($5, 1, length($5)-1);}}; /^Done in/ {{total=substr($3, 1, length($3)-2)}}; END{{print total-t}}' {input.log}); fi
         echo ,${{mapping_time}},${{memory}} >> {output}.tmp
         mv {output.csv}.tmp {output.csv}
         """
