@@ -102,6 +102,7 @@ def configure(config_path):
     palette = {
         "minimap2": "tab:blue",
         "bwamem": "tab:orange",
+        "xmapper": "red",
         # "strobealign_v071": "tab:green",
         # "strobealign_v0120_opt": "pink",
         # "strobealign_multicontext": "black",
@@ -116,6 +117,7 @@ def configure(config_path):
     tools = {
         "minimap2": "minimap2",
         "bwamem": "BWA-MEM",
+        "xmapper": "X-Mapper",
     }
     for commit in config["commits"]:
         tools["strobealign-" + commit["key"]] = commit["name"]
