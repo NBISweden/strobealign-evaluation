@@ -8,7 +8,7 @@ genomes:
   - maize
   - CHM13
   - rye
-  - ecoli50
+#  - ecoli50
 
 read-lengths:
   - 50
