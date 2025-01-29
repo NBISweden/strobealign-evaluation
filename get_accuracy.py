@@ -49,6 +49,9 @@ def pick_random_primary_single_end_iter(bam_iter):
     """
     for query_name, records in groupby(bam_iter, lambda record: record.query_name):
         records = list(records)
+        best_score = max(record.get_tag("AS") for record in records)
+        records = [record for record in records if record.get_tag("AS") == best_score]
+
         yield random.choice(records)
 
 
@@ -58,15 +61,18 @@ def pick_random_primary_paired_end_iter(bam_iter):
         r1_records = [record for record in records if record.query_name.endswith("/1")]
         r2_records = {(record.reference_name, record.reference_start): record for record in records if record.query_name.endswith("/2")}
 
-        both = [
+        pairs = [
             (r1, r2_records.get((r1.next_reference_name, r1.next_reference_start)))
             for r1 in r1_records
         ]
         # TODO
         # if one of the reads is unmapped, we skip!
-        both = [(r1, r2) for (r1, r2) in both if r2 is not None]
-        if both:
-            yield from random.choice(both)
+        pairs = [(r1, r2) for (r1, r2) in pairs if r2 is not None]
+        if pairs:
+            best_score = max(r1.get_tag("AS") + r2.get_tag("AS") for (r1, r2) in pairs)
+            pairs = [(r1, r2) for (r1, r2) in pairs if r1.get_tag("AS") + r2.get_tag("AS") == best_score]
+
+            yield from random.choice(pairs)
 
 
 def read_alignments(bam_path, only_r1: bool):
