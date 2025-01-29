@@ -1,8 +1,10 @@
 import os
-import sys
-import argparse
 import re
-from itertools import zip_longest
+import sys
+import copy
+import argparse
+import random
+from itertools import zip_longest, groupby
 from dataclasses import dataclass
 
 from pysam import AlignmentFile
@@ -39,6 +41,32 @@ def only_r1_iter(bam_iter):
         # Remove PAIRED,PROPER_PAIR,MUNMAP,MREVERSE,READ1,READ2 flags
         record.flag = record.flag & ~235
         yield record
+
+
+def pick_random_primary_single_end_iter(bam_iter):
+    """
+    Pick one of multiple primary alignments randomly
+    """
+    for query_name, records in groupby(bam_iter, lambda record: record.query_name):
+        records = list(records)
+        yield random.choice(records)
+
+
+def pick_random_primary_paired_end_iter(bam_iter):
+    for query_name, records in groupby(bam_iter, lambda record: record.query_name[:-2]):
+        records = list(records)
+        r1_records = [record for record in records if record.query_name.endswith("/1")]
+        r2_records = {(record.reference_name, record.reference_start): record for record in records if record.query_name.endswith("/2")}
+
+        both = [
+            (r1, r2_records.get((r1.next_reference_name, r1.next_reference_start)))
+            for r1 in r1_records
+        ]
+        # TODO
+        # if one of the reads is unmapped, we skip!
+        both = [(r1, r2) for (r1, r2) in both if r2 is not None]
+        if both:
+            yield from random.choice(both)
 
 
 def read_alignments(bam_path, only_r1: bool):
@@ -224,7 +252,29 @@ def filter_bam(alignment_file):
             yield record
 
 
-def get_iter_stats(truth, predicted, recompute_predicted_score=False):
+def zip_longest_synthesize_unmapped(truth, predicted):
+    p = None
+    for t in truth:
+        if p is None:
+            p = next(predicted)
+        tqn = t.query_name
+        if t.is_paired and not t.is_read1:
+            tqn += "/2"
+        else:
+            tqn += "/1"
+        if p.query_name != tqn:
+            synthetic = copy.copy(t)
+            synthetic.is_unmapped = True
+            synthetic.reference_start = 17
+            synthetic.query_name = tqn
+
+            yield t, synthetic
+        else:
+            yield t, p
+            p = None
+
+
+def get_iter_stats(truth, predicted, recompute_predicted_score=False, synthesize_unmapped=False):
     n = 0
     unaligned = 0
     nr_aligned = 0
@@ -232,7 +282,12 @@ def get_iter_stats(truth, predicted, recompute_predicted_score=False):
     correct = 0
     correct_jaccard = 0.0
     correct_score = 0  # Same or better alignment score
-    for t, p in zip_longest(filter_bam(truth), filter_bam(predicted)):
+    if synthesize_unmapped:
+        iterator = zip_longest_synthesize_unmapped(filter_bam(truth), filter_bam(predicted))
+    else:
+        iterator = zip_longest(filter_bam(truth), filter_bam(predicted))
+
+    for t, p in iterator:
         if t is None or p is None:
             raise ValueError("unequal number of records in the input files")
 
@@ -259,7 +314,7 @@ def get_iter_stats(truth, predicted, recompute_predicted_score=False):
         nr_aligned += 1
 
         is_correct = False
-        if t.reference_id == p.reference_id:
+        if t.reference_name == p.reference_name:
             jacc = jaccard_overlap(
                 p.reference_start, p.reference_end, t.reference_start, t.reference_end
             )
@@ -299,13 +354,18 @@ def main(args):
         ):
             if args.only_r1:
                 truth = only_r1_iter(truth)
+            if args.multiple_primary:
+                if args.only_r1:
+                    predicted = pick_random_primary_single_end_iter(predicted)
+                else:
+                    predicted = pick_random_primary_paired_end_iter(predicted)
             (
                 percent_aligned,
                 percent_correct,
                 over_mapped,
                 jacc,
                 correct_score_percentage,
-            ) = get_iter_stats(truth, predicted, args.recompute_score)
+            ) = get_iter_stats(truth, predicted, args.recompute_score, synthesize_unmapped=args.synthesize_unmapped)
     elif args.predicted_paf:
         truth = read_alignments(args.truth, args.only_r1)
         predicted, mapped_to_multiple_pos = read_paf(args.predicted_paf)
@@ -329,16 +389,20 @@ def main(args):
 
 
 if __name__ == "__main__":
+    random.seed(0)
     parser = argparse.ArgumentParser(
         description="Calc identity",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--only-r1", default=False, action="store_true", help="Only use R1 reads from truth BAM")
     parser.add_argument("--recompute-score", default=False, action="store_true", help="Recompute score in *predicted* BAM. Default: Use score from AS tag")
+    parser.add_argument("--multiple-primary", default=False, action="store_true", help="Allow multiple primary alignments (violates SAM specification) and pick one randomly")
+    parser.add_argument("--synthesize-unmapped", default=False, action="store_true", help="If an alignment is missing from predicted, assume the read is unmapped")
     parser.add_argument("--truth", help="True SAM/BAM")
     parser.add_argument("--predicted", "--predicted_sam", help="Predicted SAM/BAM")
     parser.add_argument("--predicted_paf", help="Predicted PAF")
     parser.add_argument("--outfile", help="Path to file")
+
     args = parser.parse_args()
 
     if len(sys.argv) == 1:
