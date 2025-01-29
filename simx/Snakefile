@@ -7,7 +7,7 @@ COMMITS = config["commits"]
 
 LIBRARIES = expand("{dataset}-{genome}-{read_length}", dataset=DATASETS, genome=GENOMES, read_length=READ_LENGTHS)
 ENDS = ("se", "pe")
-PROGRAMS = expand("strobealign-{commit[key]}", commit=COMMITS) + ["bwamem", "minimap2", "xmapper"]
+PROGRAMS = expand("strobealign-{commit[key]}", commit=COMMITS) + config["programs"]
 PLOTS = ("accuracy", "aligned", "time", "memory")
 
 COMMIT_TO_HASH_MAP = {c["key"]: c["hash"] for c in COMMITS}

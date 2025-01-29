@@ -19,6 +19,12 @@ read-lengths:
   - 300
   - 500
 
+# Programs to run in addition to strobealign
+programs:
+ - bwamem
+ - minimap2
+ - xmapper
+
 # Strobealign commits
 # For color names, see https://matplotlib.org/stable/gallery/color/named_colors.html
 commits:
