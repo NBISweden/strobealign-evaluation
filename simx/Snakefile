@@ -7,13 +7,13 @@ COMMITS = config["commits"]
 
 LIBRARIES = expand("{dataset}-{genome}-{read_length}", dataset=DATASETS, genome=GENOMES, read_length=READ_LENGTHS)
 ENDS = ("se", "pe")
-PROGRAMS = expand("strobealign-{commit[key]}", commit=COMMITS) + ["bwamem", "minimap2"]
+PROGRAMS = expand("strobealign-{commit[key]}", commit=COMMITS) + ["bwamem", "minimap2", "xmapper"]
 PLOTS = ("accuracy", "aligned", "time", "memory")
 
 COMMIT_TO_HASH_MAP = {c["key"]: c["hash"] for c in COMMITS}
 
 localrules:
-    result_csv, concat_csvs, concat_genome_csvs, plot_ends, plot_genomes
+    result_csv, concat_csvs, concat_genome_csvs, plot_ends, plot_genomes, download_xmapper
 
 rule final:
     input:
@@ -155,6 +155,69 @@ rule minimap2_paf_paired_end:
         "\n mv -v {log}.tmp {log}"
 
 
+# Map reads with x-mapper
+
+rule download_xmapper:
+    output:
+        bin="bin/x-mapper-1.1.0-beta13.jar"
+    shell:
+        "cd bin && wget https://github.com/mathjeff/Mapper/releases/download/1.1.0-beta13/x-mapper-1.1.0-beta13.jar"
+
+rule xmapper_single_end:
+    output:
+        bam=temp("results/xmapper/{dataset}-{genome}-{read_length}/se.bam")
+    input:
+        binary="bin/x-mapper-1.1.0-beta13.jar",
+        fasta="genomes/{genome}.fa",
+        r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
+    log:
+        "results/xmapper/{dataset}-{genome}-{read_length}/se.bam.log"
+    threads: 8
+    shell:
+        "cat {input} > /dev/null; "
+        "/usr/bin/time -v"
+        " java -Xms200m -Xmx20g"
+        " -jar {input.binary}"
+        " --num-threads {threads}"
+        " --out-sam /dev/stdout"
+        " --reference {input.fasta}"
+        " --queries {input.r1_fastq}"
+        " 2> {log}.tmp"
+        " | grep -v '^@PG'"
+        " | samtools sort -n --no-PG -o {output.bam}.tmp.bam -"
+        "\n mv -v {output.bam}.tmp.bam {output.bam}"
+        "\n mv -v {log}.tmp {log}"
+
+rule xmapper_paired_end:
+    output:
+        bam=temp("results/xmapper/{dataset}-{genome}-{read_length}/pe.bam")
+    input:
+        binary="bin/x-mapper-1.1.0-beta13.jar",
+        fasta="genomes/{genome}.fa",
+        r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
+        r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
+    params:
+        spacing=lambda wildcards: 300 - 2 * int(wildcards.read_length) if int(wildcards.read_length) < 250 else 700 - 2 * int(wildcards.read_length)
+    log:
+        "results/xmapper/{dataset}-{genome}-{read_length}/pe.bam.log"
+    threads: 8
+    shell:
+        "cat {input} > /dev/null; "
+        "/usr/bin/time -v"
+        " java -Xms200m -Xmx20g"
+        " -jar {input.binary}"
+        " --num-threads {threads}"
+        " --out-sam /dev/stdout"
+        " --reference {input.fasta}"
+        " --paired-queries {input.r1_fastq} {input.r2_fastq}"
+        "  --spacing {params.spacing} 50"
+        " 2> {log}.tmp"
+        " | grep -v '^@PG'"
+        " | samtools sort -n --no-PG -o {output.bam}.tmp.bam -"
+        "\n mv -v {output.bam}.tmp.bam {output.bam}"
+        "\n mv -v {log}.tmp {log}"
+
+
 rule compile_strobealign:
     output: "bin/strobealign-{name}"
     params:
@@ -256,9 +319,10 @@ rule bam_accuracy:
         truth="datasets/{dataset}/{genome}-{read_length}/truth.bam",
         bam="results/{program}/{dataset}-{genome}-{read_length}/{ends}.bam",
     params:
-        only_r1=lambda w: " --only-r1" if w.ends == "se" else ""
+        only_r1=lambda w: " --only-r1" if w.ends == "se" else "",
+        extra=lambda w: " --multiple-primary --synthesize-unmapped" if w.program == "xmapper" else ""
     shell:
-        "python get_accuracy.py{params.only_r1} --truth {input.truth} --predicted_sam {input.bam} > {output.txt}.tmp"
+        "python get_accuracy.py{params.extra}{params.only_r1} --truth {input.truth} --predicted_sam {input.bam} > {output.txt}.tmp"
         "\n mv -v {output.txt}.tmp {output.txt}"
 
 
@@ -303,7 +367,7 @@ def csvs(wildcards):
     )
     files += expand(
         f"results/{{prog}}/{{dataset}}-{wildcards.genome}-{{read_length}}/{wildcards.ends}.paf.csv",
-        prog=(prog for prog in PROGRAMS if prog != "bwamem"), dataset=DATASETS, read_length=READ_LENGTHS
+        prog=(prog for prog in PROGRAMS if prog not in {"bwamem", "xmapper"}), dataset=DATASETS, read_length=READ_LENGTHS
     )
     return files
 
