@@ -18,7 +18,8 @@ localrules:
 rule final:
     input:
         expand("plots/ends-{ends}-{plot}.pdf", ends=ENDS, plot=PLOTS),
-        expand("plots/genome-{genome}-{plot}.pdf", genome=GENOMES, plot=PLOTS)
+        expand("plots/genome-{genome}-{plot}.pdf", genome=GENOMES, plot=PLOTS),
+        "results/result.csv"
 
 
 # Map reads with BWA-MEM
