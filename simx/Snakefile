@@ -175,6 +175,12 @@ rule xmapper_single_end:
         "results/xmapper/{dataset}-{genome}-{read_length}/se.bam.log"
     threads: 8
     shell:
+        # TODO
+        # X-Mapper outputs multiple primary alignments, which sometimes differ
+        # by score. The following option possibly achieves that no
+        # suboptimal alignments are output, but we found it too late. Instead,
+        # these are filtered out in get_accuracy.py.
+        # " --max-penalty-span 0"
         "cat {input} > /dev/null; "
         "/usr/bin/time -v"
         " java -Xms200m -Xmx20g"
