@@ -256,13 +256,16 @@ def zip_longest_synthesize_unmapped(truth, predicted):
     p = None
     for t in truth:
         if p is None:
-            p = next(predicted)
+            try:
+                p = next(predicted)
+            except StopIteration:
+                p = None
         tqn = t.query_name
         if t.is_paired and not t.is_read1:
             tqn += "/2"
         else:
             tqn += "/1"
-        if p.query_name != tqn:
+        if p is None or p.query_name != tqn:
             synthetic = copy.copy(t)
             synthetic.is_unmapped = True
             synthetic.reference_start = 17
