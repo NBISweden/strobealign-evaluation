@@ -47,6 +47,11 @@ def plot(
     logscale: bool = False,
     title: Optional[str] = None,
 ):
+    if y == "memory":
+        tools = tools.copy()
+        tools.pop("xmapper")
+        table = table[table["tool"] != "xmapper"]
+
     g = sns.relplot(
         data=table,
         x="read_length",
