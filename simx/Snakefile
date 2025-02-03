@@ -5,7 +5,6 @@ GENOMES = config["genomes"]
 READ_LENGTHS = config["read-lengths"]
 COMMITS = config["commits"]
 
-LIBRARIES = expand("{dataset}-{genome}-{read_length}", dataset=DATASETS, genome=GENOMES, read_length=READ_LENGTHS)
 ENDS = ("se", "pe")
 PROGRAMS = expand("strobealign-{commit[key]}", commit=COMMITS) + config["programs"]
 PLOTS = ("accuracy", "aligned", "time", "memory")
