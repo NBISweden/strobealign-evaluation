@@ -11,6 +11,8 @@ PLOTS = ("accuracy", "aligned", "time", "memory")
 
 COMMIT_TO_HASH_MAP = {c["key"]: c["hash"] for c in COMMITS}
 
+import itertools
+
 localrules:
     result_csv, concat_csvs, concat_genome_csvs, plot_ends, plot_genomes, download_xmapper
 
@@ -368,10 +370,12 @@ rule result_csv:
         """
 
 def csvs(wildcards):
-    files = expand(
-        f"csv/{{prog}}/{{dataset}}-{wildcards.genome}-{{read_length}}/{wildcards.ends}.bam.csv",
-        prog=PROGRAMS, dataset=DATASETS, read_length=READ_LENGTHS
-    )
+    files = []
+    for prog, dataset, read_length in itertools.product(PROGRAMS, DATASETS, READ_LENGTHS):
+        if prog == "xmapper" and wildcards.genome == "rye":
+            # X-Mapper crashes on rye
+            continue
+        files.append(f"csv/{prog}/{dataset}-{wildcards.genome}-{read_length}/{wildcards.ends}.bam.csv")
     files += expand(
         f"csv/{{prog}}/{{dataset}}-{wildcards.genome}-{{read_length}}/{wildcards.ends}.paf.csv",
         prog=(prog for prog in PROGRAMS if prog not in {"bwamem", "xmapper"}), dataset=DATASETS, read_length=READ_LENGTHS
