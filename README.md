@@ -14,9 +14,9 @@ The following workflows are available:
   analyses" by Karami et al., 2023. (see `minmax/README.md`)
 - `simx/Snakefile`: Run strobealign, minimap2 and BWA-MEM on all datasets
   (sim3, sim4, sim5), measure accuracy, and plot the results.
-- `mcs/Snakefile`: Reproduces the read alignment benchmark in the paper
+- `mcs/Snakefile`: Reproduces the read alignment benchmark in
   "Multi-context seeds enable fast and high-accuracy read mapping" by
-  Tolstoganov et al., 2024 (see `mcs/README.md`).
+  Tolstoganov et al. (see `mcs/README.md`).
 
 
 ## Datasets
