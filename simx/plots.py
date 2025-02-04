@@ -106,7 +106,7 @@ def configure(config_path):
     palette = {
         "minimap2": "tab:blue",
         "bwamem": "tab:orange",
-        "xmapper": "red",
+        "xmapper": "turquoise",
         # "strobealign_v071": "tab:green",
         # "strobealign_v0120_opt": "pink",
         # "strobealign_multicontext": "black",

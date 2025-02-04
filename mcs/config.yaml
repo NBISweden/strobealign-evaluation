@@ -34,32 +34,32 @@ commits:
     name: "strobealign 0.14.0"  # displayed in plots
 #  - key: "0.15.0"
 #    hash: "8f7988143f0000aed93026db2cd4e9e1ff7646f0"
-#    color: "tab:olive"
-#    name: "strobealign 0.15.0"  # displayed in plots
+#    color: ""
+#    name: "strobealign 0.15.0"
 
 # Benchmarked for first revision of manuscript:
   - key: "mcs-022a721"
     hash: "022a7219880eb842449da8a65874a547ac58f0d1"
     color: "#333"
-    name: "strobealign MCS1"
+    name: "strobealign MCS"
 
 # - new MCS rescue
   - key: "mcs-feed434"
     hash: "feed43421c499e1110f166c0a56bb4e6a98c1196"
-    color: "cyan"
-    name: "strobealign MCS2"
+    color: "plum"
+    name: "strobealign MCS-R"
 
 # Rejected alternatives
 #
 # # - 1st syncmer always base
 #   - key: "mcs-c338863"
 #     hash: "c3388635cbdee834929c252bb6b3ea1a9e0c3b42"
-#     color: "orangered"
-#     name: "strobealign MCS1B"
+#     color: ""
+#     name: "strobealign MCS-B"
 
 # # - 1st syncmer always base
 # # - new MCS rescue
 #   - key: "mcs-bfce78a"
 #     hash: "bfce78a6741f6ad05d04f3b1b41fdef1a3c18f24"
-#     color: "tab:pink"
-#     name: "strobealign MCS1BR"
+#     color: ""
+#     name: "strobealign MCS-BR"
