@@ -70,17 +70,8 @@ def plot(
     )
     g.figure.suptitle(title)
     g.set_axis_labels("Read length", label)
-    legend_labels = ["Tool:"] + [name for key, name in tools.items()] + ["Type:", "align", "map"]
-    sns.move_legend(
-        g,
-        loc="upper left",
-        bbox_to_anchor=(0, 0),
-        #facecolor="white",
-        frameon=True,
-        framealpha=1,
-        ncols=len(legend_labels),
-        labels=legend_labels,
-    )
+    legend_labels = ["Tool:"] + [name for key, name in tools.items()] + ["\nType:", "align", "map"]
+    sns.move_legend(g, loc="right", labels=legend_labels)
 
     if logscale:
         g.set(yscale="log")
