@@ -6,7 +6,9 @@ READ_LENGTHS = config["read-lengths"]
 COMMITS = config["commits"]
 
 ENDS = ("se", "pe")
-PROGRAMS = expand("strobealign-{commit[key]}", commit=COMMITS) + config["programs"]
+PROGRAMS = expand("strobealign-{commit[key]}", commit=COMMITS)
+if config["programs"]:
+    PROGRAMS.extend(config["programs"])
 PLOTS = ("accuracy", "aligned", "time", "memory")
 
 COMMIT_TO_HASH_MAP = {c["key"]: c["hash"] for c in COMMITS}
