@@ -49,7 +49,7 @@ def plot(
 ):
     if y == "memory":
         tools = tools.copy()
-        tools.pop("xmapper")
+        tools.pop("xmapper", None)
         table = table[table["tool"] != "xmapper"]
 
     g = sns.relplot(
@@ -109,11 +109,13 @@ def configure(config_path):
 
     read_lengths = [50, 75, 100, 150, 200, 300, 500]
     # map short tool names to display names
-    tools = {
+    names = {
         "minimap2": "minimap2",
         "bwamem": "BWA-MEM",
         "xmapper": "X-Mapper",
     }
+    programs = config["programs"] if config["programs"] is not None else []
+    tools = {program: names[program] for program in programs}
     for commit in config["commits"]:
         tools["strobealign-" + commit["key"]] = commit["name"]
 
