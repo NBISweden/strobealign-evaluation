@@ -248,6 +248,14 @@ rule compile_strobealign:
 
 # Map reads with strobealign
 
+def extra_strobealign_arguments(wildcards):
+    argument = {c["key"]: c.get("arguments") for c in COMMITS}[wildcards.program]
+    if argument is not None:
+        return " " + argument
+    else:
+        return ""
+
+
 rule strobealign_paired_end:
     output:
         bam=temp("runs/strobealign-{program}/{dataset}-{genome}-{read_length}/pe.bam")
@@ -256,12 +264,14 @@ rule strobealign_paired_end:
         fasta="genomes/{genome}.fa",
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
         r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
+    params:
+        extra_args=extra_strobealign_arguments
     threads: 8
     log:
         "runs/strobealign-{program}/{dataset}-{genome}-{read_length}/pe.bam.log"
     shell:
         "cat {input} > /dev/null; "
-        "/usr/bin/time -v bin/strobealign-{wildcards.program} -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
+        "/usr/bin/time -v bin/strobealign-{wildcards.program}{params.extra_args} -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
         " | grep -v '^@PG'"
         " | samtools view --no-PG -o {output.bam}.tmp.bam -"
         "\n mv -v {output.bam}.tmp.bam {output.bam}"
@@ -275,12 +285,14 @@ rule strobealign_single_end:
         binary="bin/strobealign-{program}",
         fasta="genomes/{genome}.fa",
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
+    params:
+        extra_args=extra_strobealign_arguments
     threads: 8
     log:
         "runs/strobealign-{program}/{dataset}-{genome}-{read_length}/se.bam.log"
     shell:
         "cat {input} > /dev/null; "
-        "/usr/bin/time -v bin/strobealign-{wildcards.program} -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp"
+        "/usr/bin/time -v bin/strobealign-{wildcards.program}{params.extra_args} -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp"
         " | grep -v '^@PG'"
         " | samtools view --no-PG -o {output.bam}.tmp.bam -"
         "\n mv -v {output.bam}.tmp.bam {output.bam}"
@@ -295,12 +307,14 @@ rule strobealign_paf_paired_end:
         fasta="genomes/{genome}.fa",
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
         r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
+    params:
+        extra_args=extra_strobealign_arguments
     threads: 8
     log:
         "runs/strobealign-{program}/{dataset}-{genome}-{read_length}/pe.paf.log"
     shell:
         "cat {input} > /dev/null; "
-        "/usr/bin/time -v bin/strobealign-{wildcards.program} -x -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp | igzip > {output.paf}.tmp.gz"
+        "/usr/bin/time -v bin/strobealign-{wildcards.program}{params.extra_args} -x -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp | igzip > {output.paf}.tmp.gz"
         "\n mv -v {output.paf}.tmp.gz {output.paf}"
         "\n mv -v {log}.tmp {log}"
 
@@ -312,12 +326,14 @@ rule strobealign_paf_single_end:
         binary="bin/strobealign-{program}",
         fasta="genomes/{genome}.fa",
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
+    params:
+        extra_args=extra_strobealign_arguments
     threads: 8
     log:
         "runs/strobealign-{program}/{dataset}-{genome}-{read_length}/se.paf.log"
     shell:
         "cat {input} > /dev/null; "
-        "/usr/bin/time -v bin/strobealign-{wildcards.program} -x -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp | igzip > {output.paf}.tmp.gz"
+        "/usr/bin/time -v bin/strobealign-{wildcards.program}{params.extra_args} -x -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp | igzip > {output.paf}.tmp.gz"
         "\n mv -v {output.paf}.tmp.gz {output.paf}"
         "\n mv -v {log}.tmp {log}"
 
