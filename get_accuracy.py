@@ -406,7 +406,7 @@ def measure_accuracy(
     synthesize_unmapped: bool = False,
 ) -> Accuracy:
 
-    if predicted.suffix == ".bam":
+    if not (predicted.name.endswith(".paf") or predicted.name.endswith(".paf.gz")):
         with (
             AlignmentFile(truth) as truth,
             AlignmentFile(predicted) as predicted,
@@ -447,5 +447,5 @@ if __name__ == "__main__":
         parser.print_help()
         sys.exit()
 
-    result = measure_accuracy(**vars(args))
-    print(*result.row(), sep="\t")
+    accuracy = measure_accuracy(**vars(args))
+    print(*accuracy.percentages().row(), sep="\t")
