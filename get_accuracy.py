@@ -4,6 +4,7 @@ import sys
 import copy
 import argparse
 import random
+from pathlib import Path
 from itertools import zip_longest, groupby
 from dataclasses import dataclass
 
@@ -28,6 +29,43 @@ class ReferenceInterval:
     name: str
     start: int
     end: int
+
+
+@dataclass
+class AccuracyPercentages:
+    aligned: float
+    correct: float
+    score_correct: float
+    jaccard_correct: float
+    overmapped: int
+
+    def row(self):
+        return (
+            self.aligned,
+            self.correct,
+            self.overmapped,
+            self.jaccard_correct,
+            self.score_correct if self.score_correct is not None else "",
+        )
+
+
+@dataclass
+class Accuracy:
+    n: int
+    aligned: int
+    correct: int
+    score_correct: int | None  # unavailable for PAF
+    jaccard_correct: int
+    overmapped: int
+
+    def percentages(self) -> AccuracyPercentages:
+        return AccuracyPercentages(
+            aligned=100 * self.aligned / self.n,
+            correct=100 * self.correct / self.n,
+            overmapped=self.overmapped,
+            jaccard_correct=round(100 * self.jaccard_correct / self.n, 5),
+            score_correct=100 * self.score_correct / self.n if self.score_correct is not None else "",
+        )
 
 
 def only_r1_iter(bam_iter):
@@ -174,16 +212,16 @@ assert jaccard_overlap(0, 4, 1, 3) == 0.5
 assert jaccard_overlap(1, 3, 0, 4) == 0.5
 
 
-def get_stats(truth, predicted):
+def get_stats(truth, predicted) -> Accuracy:
     nr_total = len(truth)
     unaligned = 0
     nr_aligned = 0
-    over_mapped = 0
+    overmapped = 0
     correct = 0
     correct_jaccard = 0.0
     for query_name in predicted:
         if not truth[query_name]:
-            over_mapped += 1
+            overmapped += 1
             continue
         if not predicted[query_name]:
             unaligned += 1
@@ -203,9 +241,14 @@ def get_stats(truth, predicted):
                 predicted_interval.start, predicted_interval.end, true_interval.start, true_interval.end
             )
 
-    aligned_percentage = 100 * nr_aligned / nr_total
-    accuracy = 100 * correct / nr_total
-    return aligned_percentage, accuracy, over_mapped, 100 * correct_jaccard / nr_total
+    return Accuracy(
+        n=nr_total,
+        aligned=nr_aligned,
+        correct=correct,
+        jaccard_correct=correct_jaccard,
+        score_correct=None,
+        overmapped=overmapped,
+    )
 
 
 def parse_int_or_not(s):
@@ -215,11 +258,11 @@ def parse_int_or_not(s):
         return s
 
 
-def recompute_alignment_score(segment, scores):
+def recompute_alignment_score(segment, scores) -> int:
     md_tag = segment.get_tag("MD")
     md = [
         parse_int_or_not(e)
-        for e in re.split("([A-Z]|\^[A-Z]+|[0-9]+)", md_tag)
+        for e in re.split("([A-Z]|^[A-Z]+|[0-9]+)", md_tag)
         if e != ""
     ]
     score = 0
@@ -283,11 +326,11 @@ def zip_longest_synthesize_unmapped(truth, predicted):
             p = None
 
 
-def get_iter_stats(truth, predicted, recompute_predicted_score=False, synthesize_unmapped=False):
+def get_iter_stats(truth, predicted, recompute_predicted_score=False, synthesize_unmapped=False) -> Accuracy:
     n = 0
     unaligned = 0
     nr_aligned = 0
-    over_mapped = 0
+    overmapped = 0
     correct = 0
     correct_jaccard = 0.0
     correct_score = 0  # Same or better alignment score
@@ -313,7 +356,7 @@ def get_iter_stats(truth, predicted, recompute_predicted_score=False, synthesize
             )
         n += 1
         if t.is_unmapped:  # TODO and not p.is_unmapped:
-            over_mapped += 1
+            overmapped += 1
             continue
         if not t.is_unmapped and p.is_unmapped:
             unaligned += 1
@@ -343,58 +386,46 @@ def get_iter_stats(truth, predicted, recompute_predicted_score=False, synthesize
             # print(f"true: {t.reference_name} {t.reference_start} {t.cigarstring} AS:{truth_score}  -- actual: {p.reference_name} {p.reference_start} {p.cigarstring} AS:{predicted_score}")
             correct_score += predicted_score >= truth_score
 
-    aligned_percentage = 100 * nr_aligned / n
-    accuracy = 100 * correct / n
-    correct_score_percentage = 100 * (correct_score + correct) / n
-    return (
-        aligned_percentage,
-        accuracy,
-        over_mapped,
-        100 * correct_jaccard / n,
-        correct_score_percentage,
+    return Accuracy(
+        n=n,
+        aligned=nr_aligned,
+        correct=correct,
+        jaccard_correct=correct_jaccard,
+        score_correct=(correct_score + correct),
+        overmapped=overmapped,
     )
 
 
-def main(args):
-    if args.predicted:
+def measure_accuracy(
+    truth: Path,
+    predicted: Path,
+    outfile: Path = None,
+    only_r1: bool = False,
+    recompute_score: bool = False,
+    multiple_primary: bool = False,
+    synthesize_unmapped: bool = False,
+) -> Accuracy:
+
+    if predicted.suffix == ".bam":
         with (
-            AlignmentFile(args.truth) as truth,
-            AlignmentFile(args.predicted) as predicted,
+            AlignmentFile(truth) as truth,
+            AlignmentFile(predicted) as predicted,
         ):
-            if args.only_r1:
+            if only_r1:
                 truth = only_r1_iter(truth)
-            if args.multiple_primary:
-                if args.only_r1:
+            if multiple_primary:
+                if only_r1:
                     predicted = pick_random_primary_single_end_iter(predicted)
                 else:
                     predicted = pick_random_primary_paired_end_iter(predicted)
-            (
-                percent_aligned,
-                percent_correct,
-                over_mapped,
-                jacc,
-                correct_score_percentage,
-            ) = get_iter_stats(truth, predicted, args.recompute_score, synthesize_unmapped=args.synthesize_unmapped)
-    elif args.predicted_paf:
-        truth = read_alignments(args.truth, args.only_r1)
-        predicted, mapped_to_multiple_pos = read_paf(args.predicted_paf)
-        percent_aligned, percent_correct, over_mapped, jacc = get_stats(
-            truth, predicted
-        )
-        correct_score = -1
-        correct_score_percentage = -1
+            result = get_iter_stats(truth, predicted, recompute_score, synthesize_unmapped=synthesize_unmapped)
+    else:
+        # PAF
+        truth = read_alignments(truth, only_r1)
+        predicted, mapped_to_multiple_pos = read_paf(predicted)
+        result = get_stats(truth, predicted)
 
-    print(
-        percent_aligned,
-        percent_correct,
-        over_mapped,
-        f"{jacc:.5}",
-        correct_score_percentage,
-        sep="\t",
-    )
-    # print("Percentage aligned: {}".format(round(percent_aligned, 3)))
-    # print("Accuracy: {}".format(round(percent_correct, 3)))
-    # print("Over-aligned (unmapped in grough truth file): {}".format(over_mapped))
+    return result
 
 
 if __name__ == "__main__":
@@ -407,15 +438,14 @@ if __name__ == "__main__":
     parser.add_argument("--recompute-score", default=False, action="store_true", help="Recompute score in *predicted* BAM. Default: Use score from AS tag")
     parser.add_argument("--multiple-primary", default=False, action="store_true", help="Allow multiple primary alignments (violates SAM specification) and pick one randomly")
     parser.add_argument("--synthesize-unmapped", default=False, action="store_true", help="If an alignment is missing from predicted, assume the read is unmapped")
-    parser.add_argument("--truth", help="True SAM/BAM")
-    parser.add_argument("--predicted", "--predicted_sam", help="Predicted SAM/BAM")
-    parser.add_argument("--predicted_paf", help="Predicted PAF")
+    parser.add_argument("--truth", type=Path, help="True SAM/BAM")
+    parser.add_argument("--predicted", "--predicted_sam", "--predicted_paf", type=Path, help="Predicted SAM/BAM/PAF")
     parser.add_argument("--outfile", help="Path to file")
-
     args = parser.parse_args()
 
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit()
 
-    main(args)
+    result = measure_accuracy(**vars(args))
+    print(*result.row(), sep="\t")
