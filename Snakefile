@@ -6,7 +6,10 @@
 
 N_READS = 1_000_000
 
-# Genome 'ecoli50' disabled for now to avoid cluttering the plots
+# Additional 'genomes' that can be added to this list:
+# - ecoli50 (fifty E. coli genomes)
+# - chrY (chromosome Y of CHM13)
+
 GENOMES = ("drosophila", "maize", "CHM13", "rye")
 READ_LENGTHS = (50, 75, 100, 150, 200, 300, 500)
 
@@ -111,6 +114,12 @@ rule filter_rye:
 
         rm {output}.tmp.fa {output}.tmp.fa.fai {output}.tmp.regions.txt
         """
+
+rule extract_chry:
+    output: "genomes/chrY.fa"
+    input: fasta="genomes/CHM13.fa", fai="genomes/CHM13.fa.fai"
+    shell:
+        "samtools faidx {input.fasta} chrY > {output}"
 
 
 # Generate simulated reads and BAM files with expected alignments (truth)
