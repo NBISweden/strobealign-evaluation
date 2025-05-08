@@ -20,6 +20,10 @@ VARIATION_SETTINGS = {
     "sim3": "--sv-indel-rate 0.000005 --snp-rate 0.001 --small-indel-rate 0.0001 --max-small-indel-size 50",
     "sim4": "--sv-indel-rate 0.00001 --snp-rate 0.005 --small-indel-rate 0.0005 --max-small-indel-size 50",
     "sim5": "--sv-indel-rate 0.00002 --snp-rate 0.005 --small-indel-rate 0.001 --max-small-indel-size 100",
+
+    # SIM6 uses a different fruit fly genome (fruitfly.fa instead of drosophila.fa), which does not contain
+    # contigs smaller than 10 kbp. This is to avoid crashes in mason_simulator.
+    "sim6": "--sv-indel-rate 0.001 --snp-rate 0.05 --small-indel-rate 0.002 --max-small-indel-size 100",
 }
 SIM = ["sim0"] + list(VARIATION_SETTINGS)
 
@@ -82,6 +86,23 @@ rule filter_drosophila:
         samtools faidx {output}.tmp.fa
         # Discard contigs shorter than 1000 bp
         awk '$2>=1000 {{print $1}}' {output}.tmp.fa.fai > {output}.tmp.regions.txt
+        samtools faidx -r {output}.tmp.regions.txt {output}.tmp.fa > {output}.tmp2.fa
+        mv {output}.tmp2.fa {output}
+
+        rm {output}.tmp.fa {output}.tmp.fa.fai {output}.tmp.regions.txt
+        """
+
+# A variant of drosophila where all contigs smaller than 10 kbp are removed
+# (instead of 1 kbp). This is used for SIM6.
+rule filter_fruitfly:
+    output: "genomes/fruitfly.fa"
+    input: rules.download_drosophila.output
+    shell:
+        """
+        zcat {input} > {output}.tmp.fa
+        samtools faidx {output}.tmp.fa
+        # Discard contigs shorter than 1000 bp
+        awk '$2>=10000 {{print $1}}' {output}.tmp.fa.fai > {output}.tmp.regions.txt
         samtools faidx -r {output}.tmp.regions.txt {output}.tmp.fa > {output}.tmp2.fa
         mv {output}.tmp2.fa {output}
 
@@ -156,8 +177,8 @@ rule mason_simulator:
         r2_fastq="datasets/{sim,sim[1-9]}/{genome}-{read_length}/2.fastq.gz",
         bam="datasets/{sim,sim[1-9]}/{genome}-{read_length}/truth.bam"
     input:
-        fasta="genomes/{genome}.fa",
-        vcf=rules.mason_variator.output.vcf,
+        fasta=lambda wildcards: "genomes/fruitfly.fa" if wildcards.genome == "drosophila" and wildcards.sim == "sim6" else "genomes/{genome}.fa".format(genome=wildcards.genome),
+        vcf=lambda wildcards: "variants/sim6-fruitfly.vcf" if wildcards.genome == "drosophila" and wildcards.sim == "sim6" else "variants/{sim}-{genome}.vcf".format(sim=wildcards.sim, genome=wildcards.genome),
         mason_simulator="bin/mason_simulator"
     params:
         extra=mason_simulator_parameters
