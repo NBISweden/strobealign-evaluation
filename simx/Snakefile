@@ -5,7 +5,7 @@ GENOMES = config["genomes"]
 READ_LENGTHS = config["read-lengths"]
 COMMITS = config["commits"]
 
-ENDS = ("se", "pe")
+ENDS = config.get("ends", ("se", "pe"))
 PROGRAMS = expand("strobealign-{commit[key]}", commit=COMMITS)
 if config["programs"]:
     PROGRAMS.extend(config["programs"])
