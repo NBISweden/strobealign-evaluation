@@ -229,7 +229,7 @@ rule xmapper_paired_end:
 
 
 rule compile_strobealign:
-    output: "bin/strobealign-{name}"
+    output: "bin/strobealign-{name,(?!rs-)}"
     params:
         commit=lambda wildcards: COMMIT_TO_HASH_MAP[wildcards.name]
     threads: 4
@@ -244,6 +244,23 @@ rule compile_strobealign:
         mv build/strobealign ../{output}
         cd ..
         rm -rf strobealign-{params.commit}
+        """
+
+rule compile_strobealign_rs:
+    output: "bin/strobealign-rs-{name}"
+    params:
+        commit=lambda wildcards: COMMIT_TO_HASH_MAP["rs-" + wildcards.name]
+    threads: 8
+    shell:
+        """
+        wget https://github.com/marcelm/rstrobes/archive/{params.commit}.zip
+        unzip {params.commit}.zip
+        rm {params.commit}.zip
+        cd rstrobes-{params.commit}
+        cargo build --release
+        mv target/release/rstrobes ../{output}
+        cd ..
+        rm -rf rstrobes-{params.commit}
         """
 
 # Map reads with strobealign
