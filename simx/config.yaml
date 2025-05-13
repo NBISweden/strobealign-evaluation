@@ -1,0 +1,58 @@
+# Example evaluation configuration with all datasets and libraries enabled
+
+ends:
+  - se
+  - pe
+
+datasets:
+  - sim0
+  - sim3
+  - sim4
+  - sim5
+  - sim6
+
+genomes:
+  - drosophila
+  - maize
+  - CHM13
+  - rye
+  - chrY
+
+read-lengths:
+  - 50
+  - 75
+  - 100
+  - 150
+  - 200
+  - 300
+  - 500
+
+# Programs to run in addition to strobealign
+programs:
+ - bwamem
+ - minimap2
+ - xmapper
+
+# Strobealign commits
+# For color names, see https://matplotlib.org/stable/gallery/color/named_colors.html
+commits:
+  - key: "v0.14.0"
+    hash: "b3b8f485119ddb8c18d071f45819200cacbbf168"
+    color: "yellow"
+    name: "strobealign 0.14.0"  # used as plot legend
+
+  - key: "v0.15.0"
+    hash: "8f7988143f0000aed93026db2cd4e9e1ff7646f0"
+    color: "cyan"
+    name: "strobealign 0.15.0"
+
+  - key: "v0.16.0"
+    hash: "8488c45cc9c820d9fbcdaf749932f1f5cdf61728"
+    color: "green"
+    name: "strobealign 0.16.0"
+
+# Rust version is recognized by a rs- prefix in the key
+#  - key: "rs-f2107853"
+#    hash: "f2107853a36ba3901a09600842ad730ea3a9b9d8"
+#    color: "purple"
+#    name: "strobealign-rs 0.16"
