@@ -9,7 +9,7 @@ ENDS = config.get("ends", ("se", "pe"))
 PROGRAMS = expand("strobealign-{commit[key]}", commit=COMMITS)
 if config["programs"]:
     PROGRAMS.extend(config["programs"])
-PLOTS = ("accuracy", "aligned", "time", "memory")
+PLOTS = ("accuracy", "saccuracy", "aligned", "time", "memory")
 
 COMMIT_TO_HASH_MAP = {c["key"]: c["hash"] for c in COMMITS}
 
@@ -393,7 +393,9 @@ rule result_csv:
     shell:
         """
         echo -n {wildcards.prog},{params.typ},{wildcards.dataset},{wildcards.genome},{wildcards.ends},{wildcards.read_length}, > {output.csv}.tmp
-        cut -f1-3 {input.txt} | tr '\\t' , | tr -d '\\n' >> {output.csv}.tmp
+        cut -f1,3 {input.txt} | tr '\\t' , | tr -d '\\n' >> {output.csv}.tmp
+        echo -n , >> {output.csv}.tmp
+        cut -f2,4,5 {input.txt} | tr '\\t' , | tr -d '\\n' >> {output.csv}.tmp
         user_time=$(awk '/User time/ {{print $NF}}' {input.log})
         memory=$(awk '/Maximum resident/ {{print $NF/1048576}}' {input.log})
         indexing_time=$(awk '/Total time indexing:/ {{print $4}}' {input.log})
@@ -422,7 +424,7 @@ rule concat_csvs:
     output: "csv/{genome,([^/]*)}-{ends,(se|pe)}.csv"
     input: csvs
     shell:
-        "( echo tool,type,dataset,genome,ends,read_length,aligned,accuracy,overaligned,time,memory ; cat {input} ) > {output}"
+        "( echo tool,type,dataset,genome,ends,read_length,aligned,overaligned,accuracy,jaccuracy,saccuracy,time,memory ; cat {input} ) > {output}"
 
 
 rule concat_genome_csvs:
