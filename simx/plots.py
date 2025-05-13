@@ -28,7 +28,7 @@ import yaml
 MEASUREMENT_TYPES =  [
     # column name, label, logscale
     ("accuracy", "Accuracy (%)", False),
-    ("jaccuracy", "Jaccord accuracy (%)", False),
+    ("jaccuracy", "Jaccard accuracy (%)", False),
     ("saccuracy", "Score-based accuracy (%)", False),
     ("aligned", "Percentage aligned", False),
     ("time", "Time (sec)", True),
