@@ -49,9 +49,69 @@ def output_sam_records(name, seq1, seq2, contig, pos1, pos2):
     )
 
 
+def output_sam_record(name, seq, contig, pos):
+    print(
+        name,
+        0,
+        contig,
+        pos + 1,
+        255,
+        f"{len(seq)}M",
+        "*",
+        0,
+        0,
+        seq,
+        "H" * len(seq),  # qual
+        "NM:i:0",
+        f"MD:Z:{len(seq)}",
+        sep="\t",
+    )
+
+
+def simulate_paired_end_reads(fasta, n, read_length, mean_insert_size, stddev_insert_size):
+    contig_names = list(fasta.keys())
+    contig_lengths = [len(fr) for fr in fasta]
+    i = 0
+    while i < n:
+        contigs = random.choices(contig_names, weights=contig_lengths, k=10000)
+        fragment_sizes = norm.rvs(loc=mean_insert_size, scale=stddev_insert_size, size=10000)
+        for contig, fragment_size in zip(contigs, fragment_sizes):
+            fragment_size = int(fragment_size)
+            name = f"simulated.{i+1}"
+            contig_length = len(fasta[contig])
+            pos1 = random.randint(0, contig_length - fragment_size + 1)
+            pos2 = pos1 + fragment_size - read_length
+            assert pos2 >= 0
+            seq1 = fasta[contig][pos1:pos1+read_length].seq.upper()
+            seq2 = fasta[contig][pos2:pos2+read_length].seq.upper()
+            if seq1.count("N") >= read_length / 10 or seq2.count("N") >= read_length / 10:
+                continue
+            output_sam_records(name, seq1, seq2, contig, pos1, pos2)
+            i += 1
+            if i == n:
+                break
+
+
+def simulate_single_end_reads(fasta, n, read_length):
+    contig_names = list(fasta.keys())
+    i = 0
+    while i < n:
+        contig = random.choice(contig_names)
+        name = f"simulated.{i+1}"
+        pos = random.randint(0, len(fasta[contig]) - read_length + 1)
+        seq = fasta[contig][pos:pos+read_length].seq.upper()
+        if seq.count("N") >= read_length / 10:
+            continue
+        output_sam_record(name, seq, contig, pos)
+        i += 1
+        if i == n:
+            break
+
+
 def main():
     parser = ArgumentParser()
     parser.add_argument("-n", type=int, default=1_000_000, help="No. of read pairs to simulate")
+    parser.add_argument("--se", dest="paired", action="store_false", default=True, help="Simulate single-end reads")
     parser.add_argument("--mean-insert-size", type=int, default=500)
     parser.add_argument("--stddev-insert-size", type=int, default=30)
     parser.add_argument("--read-length", type=int, default=300)
@@ -65,27 +125,13 @@ def main():
 
     print("@HD", "VN:1.4", sep="\t")
     with Fasta(args.ref) as fasta:
-        contig_names = list(fasta.keys())
-        contig_lengths = [len(fr) for fr in fasta]
-        for name, length in zip(contig_names, contig_lengths):
-            print("@SQ", f"SN:{name}", f"LN:{length}", sep="\t")
-        i = 0
-        n = args.n
-        while i < n:
-            contigs = random.choices(contig_names, weights=contig_lengths, k=10000)
-            fragment_sizes = norm.rvs(loc=args.mean_insert_size, scale=args.stddev_insert_size, size=10000)
-            for contig, fragment_size in zip(contigs, fragment_sizes):
-                fragment_size = int(fragment_size)
-                name = f"simulated.{i+1}"
-                contig_length = len(fasta[contig])
-                pos1 = random.randint(0, contig_length - fragment_size + 1)
-                pos2 = pos1 + fragment_size - read_length
-                seq1 = fasta[contig][pos1:pos1+read_length].seq.upper()
-                seq2 = fasta[contig][pos2:pos2+read_length].seq.upper()
-                output_sam_records(name, seq1, seq2, contig, pos1, pos2)
-                i += 1
-                if i == n:
-                    break
+        for record in fasta:
+            print("@SQ", f"SN:{record.name}", f"LN:{len(record)}", sep="\t")
+
+        if args.paired:
+            simulate_paired_end_reads(fasta, args.n, read_length, args.mean_insert_size, args.stddev_insert_size)
+        else:
+            simulate_single_end_reads(fasta, args.n, read_length)
 
 
 if __name__ == "__main__":
