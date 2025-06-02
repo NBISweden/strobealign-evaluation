@@ -29,7 +29,7 @@ SIM = ["sim0"] + list(VARIATION_SETTINGS)
 
 
 localrules:
-    download_drosophila, download_maize, download_chm13, download_rye, download_ecoli50, filter_ecoli50, filter_drosophila, clone_seqan
+    download_drosophila, download_maize, download_chm13, download_rye, download_ecoli50, filter_ecoli50, filter_drosophila, clone_seqan, samtools_faidx
 
 rule:
     input:
