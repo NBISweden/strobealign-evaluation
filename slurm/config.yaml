@@ -78,6 +78,15 @@ set-resources:
     mem_mb: 38000
     cpus_per_task: 20
 
+  xmapper_paired_end:
+    mem_mb: 24000
+    cpus_per_task: 20
+
+  xmapper_single_end:
+    mem_mb: 24000
+    cpus_per_task: 20
+
+
 rerun-triggers: mtime
 jobs: 1000
 cores: 8
