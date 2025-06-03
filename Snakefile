@@ -4,14 +4,22 @@
 # This creates the downloads/, datasets/ and genomes/ directories.
 # (downloads/ can be deleted.)
 
-N_READS = 1_000_000
-
 # Additional 'genomes' that can be added to this list:
 # - ecoli50 (fifty E. coli genomes)
 # - chrY (chromosome Y of CHM13)
 
 GENOMES = ("drosophila", "maize", "CHM13", "rye")
 READ_LENGTHS = (50, 75, 100, 150, 200, 300, 500)
+
+N_READS = {
+    50: 1_000_000,
+    75: 1_000_000,
+    100: 1_000_000,
+    150: 1_000_000,
+    200: 1_000_000,
+    300: 1_000_000,
+    500: 1_000_000,
+}
 
 DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=READ_LENGTHS)
 ENDS = ("pe", "se")
@@ -181,14 +189,15 @@ rule mason_simulator:
         vcf=lambda wildcards: "variants/sim6-fruitfly.vcf" if wildcards.genome == "drosophila" and wildcards.sim == "sim6" else "variants/{sim}-{genome}.vcf".format(sim=wildcards.sim, genome=wildcards.genome),
         mason_simulator="bin/mason_simulator"
     params:
-        extra=mason_simulator_parameters
+        extra=mason_simulator_parameters,
+        n_reads=lambda wildcards: N_READS[int(wildcards.read_length)]
     log: "logs/mason_simulator/{sim}-{genome}-{read_length}.log"
     shell:
         "ulimit -n 16384"  # Avoid "Uncaught exception of type MasonIOException: Could not open right/single-end output file."
         "\n{input.mason_simulator}"
         " --num-threads 1"  # Output depends on number of threads, leave at 1 for reproducibility
         " -ir {input.fasta}"
-        " -n {N_READS}"
+        " -n {params.n_reads}"
         " -iv {input.vcf}"
         " {params.extra}"
         " -o {output.r1_fastq}.tmp.fastq.gz"
@@ -215,9 +224,10 @@ rule sim0:
     input:
         fasta="genomes/{genome}.fa",
     params:
-        extra=readsimulator_parameters
+        extra=readsimulator_parameters,
+        n_reads=lambda wildcards: N_READS[int(wildcards.read_length)]
     shell:
-        "python readsimulator.py{params.extra} -n {N_READS} --read-length {wildcards.read_length} {input.fasta} | samtools view -o {output.bam}.tmp.bam"
+        "python readsimulator.py{params.extra} -n {params.n_reads} --read-length {wildcards.read_length} {input.fasta} | samtools view -o {output.bam}.tmp.bam"
         "\nsamtools fastq -N -1 {output.r1_fastq} -2 {output.r2_fastq} {output.bam}.tmp.bam"
         "\nmv {output.bam}.tmp.bam {output.bam}"
 
