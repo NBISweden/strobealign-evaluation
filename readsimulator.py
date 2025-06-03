@@ -4,6 +4,7 @@
 # dependencies = ["pyfaidx", "scipy"]
 # ///
 
+import sys
 from argparse import ArgumentParser
 import random
 from pathlib import Path
@@ -97,6 +98,8 @@ def simulate_single_end_reads(fasta, n, read_length):
     i = 0
     while i < n:
         contig = random.choice(contig_names)
+        contig_length = len(fasta[contig])
+        assert contig_length >= read_length
         name = f"simulated.{i+1}"
         pos = random.randint(0, len(fasta[contig]) - read_length + 1)
         seq = fasta[contig][pos:pos+read_length].seq.upper()
@@ -123,15 +126,19 @@ def main():
     numpy.random.seed(args.seed)
     read_length = args.read_length
 
-    print("@HD", "VN:1.4", sep="\t")
     with Fasta(args.ref) as fasta:
-        for record in fasta:
-            print("@SQ", f"SN:{record.name}", f"LN:{len(record)}", sep="\t")
+        records = {r.name: r for r in fasta if len(r) >= args.read_length}
+        print(f"Filtered {len(fasta.keys()) - len(records)} contigs that are shorter than the read length", file=sys.stderr)
+        if not records:
+            raise ValueError("All contigs are shorter than the requested read length")
+        print("@HD", "VN:1.4", sep="\t")
+        for name, record in records.items():
+            print("@SQ", f"SN:{name}", f"LN:{len(record)}", sep="\t")
 
         if args.paired:
-            simulate_paired_end_reads(fasta, args.n, read_length, args.mean_insert_size, args.stddev_insert_size)
+            simulate_paired_end_reads(records, args.n, read_length, args.mean_insert_size, args.stddev_insert_size)
         else:
-            simulate_single_end_reads(fasta, args.n, read_length)
+            simulate_single_end_reads(records, args.n, read_length)
 
 
 if __name__ == "__main__":
