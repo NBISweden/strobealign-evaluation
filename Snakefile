@@ -10,7 +10,7 @@
 
 GENOMES = ("drosophila", "maize", "CHM13", "rye")
 READ_LENGTHS = (50, 75, 100, 150, 200, 300, 500)
-
+LONG_READ_LENGTHS = (2000, )  # single-end only
 N_READS = {
     50: 1_000_000,
     75: 1_000_000,
@@ -19,9 +19,11 @@ N_READS = {
     200: 1_000_000,
     300: 1_000_000,
     500: 1_000_000,
+    2000: 250_000,
 }
 
 DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=READ_LENGTHS)
+LONG_DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=LONG_READ_LENGTHS)
 ENDS = ("pe", "se")
 
 VARIATION_SETTINGS = {
@@ -36,13 +38,20 @@ VARIATION_SETTINGS = {
 SIM = ["sim0"] + list(VARIATION_SETTINGS)
 
 
+wildcard_constraints:
+    read_length=r"\d{2,3}",
+    long_read_length=r"\d{4,5}"
+
+
 localrules:
     download_drosophila, download_maize, download_chm13, download_rye, download_ecoli50, filter_ecoli50, filter_drosophila, clone_seqan, samtools_faidx
+
 
 rule:
     input:
         expand("datasets/{sim}/{ds}/{r}.fastq.gz", sim=SIM, ds=DATASETS, r=(1, 2)),
-        expand("datasets/{sim}/{ds}/truth.bam", sim=SIM, ds=DATASETS, ends=ENDS)
+        expand("datasets/{sim}/{ds}/truth.bam", sim=SIM, ds=DATASETS + LONG_DATASETS),
+        expand("datasets/{sim}/{ds}/1.fastq.gz", sim=SIM, ds=LONG_DATASETS),
 
 # Download genomes
 
@@ -209,6 +218,34 @@ rule mason_simulator:
         "\nmv -v {output.bam}.tmp.bam {output.bam}"
 
 
+rule mason_simulator_long:
+    output:
+        fastq="datasets/{sim,sim[1-9]}/{genome}-{long_read_length}/1.fastq.gz",
+        bam="datasets/{sim,sim[1-9]}/{genome}-{long_read_length}/truth.bam"
+    input:
+        fasta=lambda wildcards: "genomes/fruitfly.fa" if wildcards.genome == "drosophila" else "genomes/{genome}.fa".format(genome=wildcards.genome),
+        vcf=lambda wildcards: "variants/sim6-fruitfly.vcf" if wildcards.genome == "drosophila" else "variants/{sim}-{genome}.vcf".format(sim=wildcards.sim, genome=wildcards.genome),
+        mason_simulator="bin/mason_simulator"
+    params:
+        n_reads=lambda wildcards: N_READS[int(wildcards.long_read_length)],
+        fragment_length=lambda wildcards: int(int(wildcards.long_read_length) * 1.5)
+    log: "logs/mason_simulator/{sim}-{genome}-{long_read_length}.log"
+    shell:
+        "ulimit -n 16384"  # Avoid "Uncaught exception of type MasonIOException: Could not open right/single-end output file."
+        "\n{input.mason_simulator}"
+        " --num-threads 1"  # Output depends on number of threads, leave at 1 for reproducibility
+        " --illumina-read-length {wildcards.long_read_length}"
+        " --fragment-mean-size {params.fragment_length}"
+        " -ir {input.fasta}"
+        " -n {params.n_reads}"
+        " -iv {input.vcf}"
+        " -o {output.fastq}.tmp.fastq.gz"
+        " -oa {output.bam}.tmp.bam"
+        " 2>&1 | tee {log}"
+        "\nmv -v {output.fastq}.tmp.fastq.gz {output.fastq}"
+        "\nmv -v {output.bam}.tmp.bam {output.bam}"
+
+
 def readsimulator_parameters(wildcards):
     read_length = int(wildcards.read_length)
     if read_length >= 250:
@@ -229,6 +266,20 @@ rule sim0:
     shell:
         "python readsimulator.py{params.extra} -n {params.n_reads} --read-length {wildcards.read_length} {input.fasta} | samtools view -o {output.bam}.tmp.bam"
         "\nsamtools fastq -N -1 {output.r1_fastq} -2 {output.r2_fastq} {output.bam}.tmp.bam"
+        "\nmv {output.bam}.tmp.bam {output.bam}"
+
+
+rule sim0_long:
+    output:
+        fastq="datasets/sim0/{genome}-{long_read_length}/1.fastq.gz",
+        bam="datasets/sim0/{genome}-{long_read_length}/truth.bam"
+    input:
+        fasta="genomes/{genome}.fa",
+    params:
+        n_reads=lambda wildcards: N_READS[int(wildcards.long_read_length)]
+    shell:
+        "python readsimulator.py --se -n {params.n_reads} --read-length {wildcards.long_read_length} {input.fasta} | samtools view -o {output.bam}.tmp.bam"
+        "\nsamtools fastq -N -0 {output.fastq} {output.bam}.tmp.bam"
         "\nmv {output.bam}.tmp.bam {output.bam}"
 
 
