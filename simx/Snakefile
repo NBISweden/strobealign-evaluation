@@ -381,18 +381,35 @@ rule paf_accuracy:
         "python get_accuracy.py{params.only_r1} --truth {input.truth} --predicted_paf {input.paf} > {output.txt}.tmp"
         "\n mv -v {output.txt}.tmp {output.txt}"
 
+rule count_reads_se:
+    output:
+        txt="datasets/{dataset}/{genome}-{read_length}/se.readcount.txt",
+    input:
+        fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz"
+    shell:
+        "echo $[ $(zcat {input.fastq} | wc -l) / 4 ] > {output}"
+
+rule count_reads_pe:
+    output:
+        txt="datasets/{dataset}/{genome}-{read_length}/pe.readcount.txt",
+    input:
+        fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz"
+    shell:
+        "echo $[ $(zcat {input.fastq} | wc -l) / 2 ] > {output}"
 
 rule result_csv:
     output:
         csv="csv/{prog}/{dataset}-{genome}-{read_length}/{ends}.{bampaf}.csv"
     input:
         txt="runs/{prog}/{dataset}-{genome}-{read_length}/{ends}.{bampaf}.accuracy.txt",
+        read_count="datasets/{dataset}/{genome}-{read_length}/{ends}.readcount.txt",
         log="runs/{prog}/{dataset}-{genome}-{read_length}/{ends}.{bampaf}.log",
     params:
         typ=lambda wildcards: "map" if wildcards.bampaf == "paf" else "align"
     shell:
         """
         echo -n {wildcards.prog},{params.typ},{wildcards.dataset},{wildcards.genome},{wildcards.ends},{wildcards.read_length}, > {output.csv}.tmp
+        echo -n $(< {input.read_count}), >> {output.csv}.tmp
         cut -f1,3 {input.txt} | tr '\\t' , | tr -d '\\n' >> {output.csv}.tmp
         echo -n , >> {output.csv}.tmp
         cut -f2,4,5 {input.txt} | tr '\\t' , | tr -d '\\n' >> {output.csv}.tmp
@@ -426,7 +443,7 @@ rule concat_csvs:
     output: "csv/{genome,([^/]*)}-{ends,(se|pe)}.csv"
     input: csvs
     shell:
-        "( echo tool,type,dataset,genome,ends,read_length,aligned,overaligned,accuracy,jaccuracy,saccuracy,time,memory ; cat {input} ) > {output}"
+        "( echo tool,type,dataset,genome,ends,read_length,read_count,aligned,overaligned,accuracy,jaccuracy,saccuracy,time,memory ; cat {input} ) > {output}"
 
 
 rule concat_genome_csvs:
