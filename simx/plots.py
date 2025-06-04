@@ -40,6 +40,7 @@ def plot(
     table,
     palette,
     tools: dict[str, str],
+    modes: list[str],
     read_lengths,
     y: str,
     label: str,
@@ -72,7 +73,9 @@ def plot(
     )
     g.figure.suptitle(title)
     g.set_axis_labels("Read length", label)
-    legend_labels = ["Tool:"] + [name for key, name in tools.items()] + ["\nType:", "align", "map"]
+    legend_labels = ["Tool:"] + [name for key, name in tools.items()] + ["\nType:"]
+    assert modes == ["align"] or modes == ["map"] or modes == ["align", "map"]
+    legend_labels += modes
     sns.move_legend(g, loc="right", labels=legend_labels)
 
     g.set(xscale="log")
@@ -125,10 +128,12 @@ def configure(config_path):
     for commit in config["commits"]:
         tools["strobealign-" + commit["key"]] = commit["name"]
 
-    return palette, read_lengths, tools
+    modes = sorted(config.get("modes", ["align", "map"]))
+
+    return palette, read_lengths, tools, modes
 
 
-def plot_ends(df, outfolder, palette, read_lengths, tools, xlim, linewidth):
+def plot_ends(df, outfolder, palette, read_lengths, tools, modes, xlim, linewidth):
     for ends, table in df.groupby("ends"):
         title = "Single-end reads" if ends == "se" else "Paired-end reads"
         for y, label, logscale in MEASUREMENT_TYPES:
@@ -136,6 +141,7 @@ def plot_ends(df, outfolder, palette, read_lengths, tools, xlim, linewidth):
                 table,
                 palette,
                 tools,
+                modes,
                 read_lengths,
                 y=y,
                 logscale=logscale,
@@ -149,7 +155,7 @@ def plot_ends(df, outfolder, palette, read_lengths, tools, xlim, linewidth):
                 fig.savefig(outfolder / f"ends-{ends}-{y}.pdf")
 
 
-def plot_genomes(df, outfolder, palette, read_lengths, tools, xlim, linewidth):
+def plot_genomes(df, outfolder, palette, read_lengths, tools, modes, xlim, linewidth):
     for genome, table in df.groupby("genome"):
         for y, label, logscale in MEASUREMENT_TYPES:
             title = f"{label} – {genome}"
@@ -157,6 +163,7 @@ def plot_genomes(df, outfolder, palette, read_lengths, tools, xlim, linewidth):
                 table,
                 palette,
                 tools,
+                modes,
                 read_lengths,
                 y=y,
                 logscale=logscale,
@@ -176,15 +183,15 @@ def main(args):
     sns.set(font_scale=1.4)
     sns.set_style("whitegrid")
 
-    palette, read_lengths, tools = configure(args.config)
+    palette, read_lengths, tools, modes = configure(args.config)
     xlim = (min(read_lengths) / 1.05, max(read_lengths) * 1.05)
 
     table = pd.read_csv(args.csv)
     outfolder = Path(args.outfolder)
     if args.genome:
-        plot_genomes(table, outfolder, palette, read_lengths, tools, xlim, args.linewidth)
+        plot_genomes(table, outfolder, palette, read_lengths, tools, modes, xlim, args.linewidth)
     else:
-        plot_ends(table, outfolder, palette, read_lengths, tools, xlim, args.linewidth)
+        plot_ends(table, outfolder, palette, read_lengths, tools, modes, xlim, args.linewidth)
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ DATASETS = config["datasets"]
 GENOMES = config["genomes"]
 READ_LENGTHS = config["read-lengths"]
 COMMITS = config["commits"]
-
+MODES = config.get("modes", ("align", "map"))
 ENDS = config.get("ends", ("se", "pe"))
 PROGRAMS = expand("strobealign-{commit[key]}", commit=COMMITS)
 if config["programs"]:
@@ -408,15 +408,17 @@ rule result_csv:
 
 def csvs(wildcards):
     files = []
-    for prog, dataset, read_length in itertools.product(PROGRAMS, DATASETS, READ_LENGTHS):
-        if prog == "xmapper" and wildcards.genome == "rye":
-            # X-Mapper crashes on rye
-            continue
-        files.append(f"csv/{prog}/{dataset}-{wildcards.genome}-{read_length}/{wildcards.ends}.bam.csv")
-    files += expand(
-        f"csv/{{prog}}/{{dataset}}-{wildcards.genome}-{{read_length}}/{wildcards.ends}.paf.csv",
-        prog=(prog for prog in PROGRAMS if prog not in {"bwamem", "xmapper"}), dataset=DATASETS, read_length=READ_LENGTHS
-    )
+    if "align" in MODES:
+        for prog, dataset, read_length in itertools.product(PROGRAMS, DATASETS, READ_LENGTHS):
+            if prog == "xmapper" and wildcards.genome == "rye":
+                # X-Mapper crashes on rye
+                continue
+            files.append(f"csv/{prog}/{dataset}-{wildcards.genome}-{read_length}/{wildcards.ends}.bam.csv")
+    if "map" in MODES:
+        files += expand(
+            f"csv/{{prog}}/{{dataset}}-{wildcards.genome}-{{read_length}}/{wildcards.ends}.paf.csv",
+            prog=(prog for prog in PROGRAMS if prog not in {"bwamem", "xmapper"}), dataset=DATASETS, read_length=READ_LENGTHS
+        )
     return files
 
 
