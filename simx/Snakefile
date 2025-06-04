@@ -229,7 +229,7 @@ rule xmapper_paired_end:
 
 
 rule compile_strobealign:
-    output: "bin/strobealign-{name,(?!rs-)}"
+    output: "bin/strobealign-{name,(?!rs-).*}"
     params:
         commit=lambda wildcards: COMMIT_TO_HASH_MAP[wildcards.name]
     threads: 4
