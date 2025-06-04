@@ -186,7 +186,7 @@ rule xmapper_single_end:
         # " --max-penalty-span 0"
         "cat {input} > /dev/null; "
         "/usr/bin/time -v"
-        " java -Xms200m -Xmx20g"
+        " java -Xms200m -Xmx48g"
         " -jar {input.binary}"
         " --num-threads {threads}"
         " --out-sam /dev/stdout"
