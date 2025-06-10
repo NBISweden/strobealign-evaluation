@@ -173,7 +173,8 @@ def read_paf(paf_file):
             int(vals[7]),
             int(vals[8]),
         )
-
+        if not query_name.endswith("/1") and not query_name.endswith("/2"):
+            query_name += "/1"
         if query_name in read_positions:
             mapped_to_multiple_pos += 1
             continue
