@@ -68,13 +68,13 @@ class Accuracy:
         )
 
 
-def only_r1_iter(bam_iter):
+def skip_r2_iter(bam_iter):
     """
     Use only the R1 reads in the paired-end input BAM and present the records
     as if they were from a single-end BAM.
     """
     for record in bam_iter:
-        if not record.is_read1:
+        if record.is_read2:
             continue
         # Remove PAIRED,PROPER_PAIR,MUNMAP,MREVERSE,READ1,READ2 flags
         record.flag = record.flag & ~235
@@ -113,15 +113,17 @@ def pick_random_primary_paired_end_iter(bam_iter):
             yield from random.choice(pairs)
 
 
-def read_alignments(bam_path, only_r1: bool):
+def read_alignments(bam_path, skip_r2: bool):
     bam_path = AlignmentFile(bam_path, check_sq=False)
     read_positions = {}
 
     bam_iter = bam_path.fetch(until_eof=True)
-    if only_r1:
-        bam_iter = only_r1_iter(bam_iter)
+    if skip_r2:
+        bam_iter = skip_r2_iter(bam_iter)
     for read in bam_iter:
         if read.is_secondary:
+            continue
+        if read.is_supplementary:
             continue
         if read.flag == 0 or read.flag == 16:  # single end
             query_name = read.query_name
@@ -297,7 +299,7 @@ def recompute_alignment_score(segment, scores) -> int:
 
 def filter_bam(alignment_file):
     for record in alignment_file:
-        if not record.is_supplementary:
+        if not record.is_supplementary and not record.is_secondary:
             yield record
 
 
@@ -400,7 +402,7 @@ def measure_accuracy(
     truth: Path,
     predicted: Path,
     outfile: Path = None,
-    only_r1: bool = False,
+    skip_r2: bool = False,
     recompute_score: bool = False,
     multiple_primary: bool = False,
     synthesize_unmapped: bool = False,
@@ -411,17 +413,17 @@ def measure_accuracy(
             AlignmentFile(truth) as truth,
             AlignmentFile(predicted) as predicted,
         ):
-            if only_r1:
-                truth = only_r1_iter(truth)
+            if skip_r2:
+                truth = skip_r2_iter(truth)
             if multiple_primary:
-                if only_r1:
+                if skip_r2:
                     predicted = pick_random_primary_single_end_iter(predicted)
                 else:
                     predicted = pick_random_primary_paired_end_iter(predicted)
             result = get_iter_stats(truth, predicted, recompute_score, synthesize_unmapped=synthesize_unmapped)
     else:
         # PAF
-        truth = read_alignments(truth, only_r1)
+        truth = read_alignments(truth, skip_r2)
         predicted, mapped_to_multiple_pos = read_paf(predicted)
         result = get_stats(truth, predicted)
 
@@ -434,7 +436,7 @@ if __name__ == "__main__":
         description="Calc identity",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--only-r1", default=False, action="store_true", help="Only use R1 reads from truth BAM")
+    parser.add_argument("--skip-r2", "--only-r1", default=False, action="store_true", help="Skip R2 reads in truth BAM")
     parser.add_argument("--recompute-score", default=False, action="store_true", help="Recompute score in *predicted* BAM. Default: Use score from AS tag")
     parser.add_argument("--multiple-primary", default=False, action="store_true", help="Allow multiple primary alignments (violates SAM specification) and pick one randomly")
     parser.add_argument("--synthesize-unmapped", default=False, action="store_true", help="If an alignment is missing from predicted, assume the read is unmapped")
