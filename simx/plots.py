@@ -75,6 +75,7 @@ def plot(
     legend_labels = ["Tool:"] + [name for key, name in tools.items()] + ["\nType:", "align", "map"]
     sns.move_legend(g, loc="right", labels=legend_labels)
 
+    g.set(xscale="log")
     if logscale:
         g.set(yscale="log")
         g.set(
@@ -176,7 +177,7 @@ def main(args):
     sns.set_style("whitegrid")
 
     palette, read_lengths, tools = configure(args.config)
-    xlim = (min(read_lengths) - 10, max(read_lengths) + 10)
+    xlim = (min(read_lengths) / 1.05, max(read_lengths) * 1.05)
 
     table = pd.read_csv(args.csv)
     outfolder = Path(args.outfolder)
