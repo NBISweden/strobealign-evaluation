@@ -31,7 +31,7 @@ MEASUREMENT_TYPES =  [
     ("jaccuracy", "Jaccard accuracy (%)", False),
 #    ("saccuracy", "Score-based accuracy (%)", False),
     ("aligned", "Percentage aligned", False),
-    ("time", "Time (sec)", True),
+    ("time", "Time (µs/read)", True),
     ("memory", "Memory usage (GB)", False),
 ]
 
@@ -187,6 +187,7 @@ def main(args):
     xlim = (min(read_lengths) / 1.05, max(read_lengths) * 1.05)
 
     table = pd.read_csv(args.csv)
+    table["time"] = table["time"] * 1E6 / table["read_count"]
     outfolder = Path(args.outfolder)
     if args.genome:
         plot_genomes(table, outfolder, palette, read_lengths, tools, modes, xlim, args.linewidth)
