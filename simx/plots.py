@@ -110,6 +110,9 @@ def configure(config_path):
             palette["strobealign-" + commit["key"]] = commit["color"]
 
     read_lengths = [50, 75, 100, 150, 200, 300, 500]
+    if config["read-lengths"] is not None:
+        read_lengths = sorted(config["read-lengths"])
+
     # map short tool names to display names
     names = {
         "minimap2": "minimap2",
@@ -173,7 +176,7 @@ def main(args):
     sns.set_style("whitegrid")
 
     palette, read_lengths, tools = configure(args.config)
-    xlim = (40, 510)
+    xlim = (min(read_lengths) - 10, max(read_lengths) + 10)
 
     table = pd.read_csv(args.csv)
     outfolder = Path(args.outfolder)
