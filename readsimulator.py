@@ -71,7 +71,7 @@ def output_sam_record(name, seq, contig, pos):
 
 def simulate_paired_end_reads(fasta, n, read_length, mean_insert_size, stddev_insert_size):
     contig_names = list(fasta.keys())
-    contig_lengths = [len(fr) for fr in fasta]
+    contig_lengths = [len(fr) for fr in fasta.values()]
     i = 0
     while i < n:
         contigs = random.choices(contig_names, weights=contig_lengths, k=10000)
@@ -95,6 +95,7 @@ def simulate_paired_end_reads(fasta, n, read_length, mean_insert_size, stddev_in
 
 def simulate_single_end_reads(fasta, n, read_length):
     contig_names = list(fasta.keys())
+    contig_lengths = [len(fr) for fr in fasta.values()]
     i = 0
     while i < n:
         contigs = random.choices(contig_names, weights=contig_lengths, k=10000)
