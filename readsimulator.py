@@ -97,18 +97,19 @@ def simulate_single_end_reads(fasta, n, read_length):
     contig_names = list(fasta.keys())
     i = 0
     while i < n:
-        contig = random.choice(contig_names)
-        contig_length = len(fasta[contig])
-        assert contig_length >= read_length
-        name = f"simulated.{i+1}"
-        pos = random.randint(0, len(fasta[contig]) - read_length + 1)
-        seq = fasta[contig][pos:pos+read_length].seq.upper()
-        if seq.count("N") >= read_length / 10:
-            continue
-        output_sam_record(name, seq, contig, pos)
-        i += 1
-        if i == n:
-            break
+        contigs = random.choices(contig_names, weights=contig_lengths, k=10000)
+        for contig in contigs:
+            contig_length = len(fasta[contig])
+            assert contig_length >= read_length
+            name = f"simulated.{i+1}"
+            pos = random.randint(0, len(fasta[contig]) - read_length + 1)
+            seq = fasta[contig][pos:pos+read_length].seq.upper()
+            if seq.count("N") >= read_length / 10:
+                continue
+            output_sam_record(name, seq, contig, pos)
+            i += 1
+            if i == n:
+                break
 
 
 def main():
