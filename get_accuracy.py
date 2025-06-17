@@ -162,10 +162,14 @@ def read_alignments(bam_path, skip_r2: bool):
     return read_positions
 
 
-def read_paf(paf_file):
+def read_paf(path: Path):
     read_positions = {}  # query_name -> ReferenceInterval
     mapped_to_multiple_pos = 0
-    for line in xopen(paf_file):
+    if path.name == "-":
+        file = sys.stdin
+    else:
+        file = xopen(path)
+    for line in file:
         vals = line.split()
         query_name, reference_name, reference_start, reference_end = (
             vals[0],
@@ -402,6 +406,7 @@ def get_iter_stats(truth, predicted, recompute_predicted_score=False, synthesize
 def measure_accuracy(
     truth: Path,
     predicted: Path,
+    force_paf: bool = False,
     outfile: Path = None,
     skip_r2: bool = False,
     recompute_score: bool = False,
@@ -409,7 +414,11 @@ def measure_accuracy(
     synthesize_unmapped: bool = False,
 ) -> Accuracy:
 
-    if not (predicted.name.endswith(".paf") or predicted.name.endswith(".paf.gz")):
+    if force_paf or predicted.name.endswith(".paf") or predicted.name.endswith(".paf.gz"):
+        truth = read_alignments(truth, skip_r2)
+        predicted, mapped_to_multiple_pos = read_paf(predicted)
+        result = get_stats(truth, predicted)
+    else:
         with (
             AlignmentFile(truth) as truth,
             AlignmentFile(predicted) as predicted,
@@ -422,11 +431,6 @@ def measure_accuracy(
                 else:
                     predicted = pick_random_primary_paired_end_iter(predicted)
             result = get_iter_stats(truth, predicted, recompute_score, synthesize_unmapped=synthesize_unmapped)
-    else:
-        # PAF
-        truth = read_alignments(truth, skip_r2)
-        predicted, mapped_to_multiple_pos = read_paf(predicted)
-        result = get_stats(truth, predicted)
 
     return result
 
@@ -443,6 +447,7 @@ if __name__ == "__main__":
     parser.add_argument("--synthesize-unmapped", default=False, action="store_true", help="If an alignment is missing from predicted, assume the read is unmapped")
     parser.add_argument("--truth", type=Path, help="True SAM/BAM")
     parser.add_argument("--predicted", "--predicted_sam", "--predicted_paf", type=Path, help="Predicted SAM/BAM/PAF")
+    parser.add_argument("--paf", dest="force_paf", action="store_true", help="Assume PAF input for predicted (usually autodetected, only needed if reading PAF from stdin)")
     parser.add_argument("--outfile", help="Path to file")
     args = parser.parse_args()
 
