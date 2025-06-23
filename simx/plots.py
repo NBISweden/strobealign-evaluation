@@ -101,7 +101,8 @@ def configure(config_path):
         config = {}
 
     palette = {
-        "minimap2": "tab:blue",
+        "minimap2-std": "tab:blue",
+        "minimap2-sr": "navy",
         "bwamem": "tab:orange",
         "xmapper": "turquoise",
         # "strobealign_v071": "tab:green",
@@ -119,7 +120,8 @@ def configure(config_path):
 
     # map short tool names to display names
     names = {
-        "minimap2": "minimap2",
+        "minimap2-std": "minimap2",
+        "minimap2-sr": "minimap2 -x sr",
         "bwamem": "BWA-MEM",
         "xmapper": "X-Mapper",
     }

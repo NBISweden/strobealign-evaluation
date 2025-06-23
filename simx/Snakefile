@@ -13,6 +13,11 @@ PLOTS = ("accuracy", "aligned", "time", "memory")
 
 COMMIT_TO_HASH_MAP = {c["key"]: c["hash"] for c in COMMITS}
 
+MINIMAP2_PROFILE_ARGS = {
+    "sr": "-x sr",
+    "std": "",
+}
+
 import itertools
 
 localrules:
@@ -89,16 +94,18 @@ rule minimap2_index:
 
 rule minimap2_single_end:
     output:
-        bam=temp("runs/minimap2/{dataset}-{genome}-{read_length}/se.bam")
+        bam=temp("runs/minimap2-{profile}/{dataset}-{genome}-{read_length}/se.bam")
     input:
         index=rules.minimap2_index.output,
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
     log:
-        "runs/minimap2/{dataset}-{genome}-{read_length}/se.bam.log"
+        "runs/minimap2-{profile}/{dataset}-{genome}-{read_length}/se.bam.log"
+    params:
+        profile=lambda wildcards: MINIMAP2_PROFILE_ARGS[wildcards.profile]
     threads: 8
     shell:
         "cat {input} > /dev/null; "
-        "/usr/bin/time -v minimap2 -t {threads} -a -x sr {input.index} {input.r1_fastq} 2> {log}.tmp"
+        "/usr/bin/time -v minimap2 -a -t {threads} {params.profile} {input.index} {input.r1_fastq} 2> {log}.tmp"
         " | grep -v '^@PG'"
         " | samtools view --no-PG -o {output.bam}.tmp.bam -"
         "\n mv -v {output.bam}.tmp.bam {output.bam}"
@@ -107,17 +114,19 @@ rule minimap2_single_end:
 
 rule minimap2_paired_end:
     output:
-        bam=temp("runs/minimap2/{dataset}-{genome}-{read_length}/pe.bam")
+        bam=temp("runs/minimap2-{profile}/{dataset}-{genome}-{read_length}/pe.bam")
     input:
         index=rules.minimap2_index.output,
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
         r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
     log:
-        "runs/minimap2/{dataset}-{genome}-{read_length}/pe.bam.log"
+        "runs/minimap2-{profile}/{dataset}-{genome}-{read_length}/pe.bam.log"
+    params:
+        profile=lambda wildcards: MINIMAP2_PROFILE_ARGS[wildcards.profile]
     threads: 8
     shell:
         "cat {input} > /dev/null; "
-        "/usr/bin/time -v minimap2 -t {threads} -a -x sr {input.index} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
+        "/usr/bin/time -v minimap2 -a -t {threads} {params.profile} {input.index} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
         " | grep -v '^@PG'"
         " | samtools view --no-PG -o {output.bam}.tmp.bam -"
         "\n mv -v {output.bam}.tmp.bam {output.bam}"
@@ -126,16 +135,18 @@ rule minimap2_paired_end:
 
 rule minimap2_paf_single_end:
     output:
-        paf=temp("runs/minimap2/{dataset}-{genome}-{read_length}/se.paf.gz")
+        paf=temp("runs/minimap2-{profile}/{dataset}-{genome}-{read_length}/se.paf.gz")
     input:
         index=rules.minimap2_index.output,
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
     log:
-        "runs/minimap2/{dataset}-{genome}-{read_length}/se.paf.log"
+        "runs/minimap2-{profile}/{dataset}-{genome}-{read_length}/se.paf.log"
+    params:
+        profile=lambda wildcards: MINIMAP2_PROFILE_ARGS[wildcards.profile]
     threads: 8
     shell:
         "cat {input} > /dev/null; "
-        "/usr/bin/time -v minimap2 -t {threads} -x sr {input.index} {input.r1_fastq} 2> {log}.tmp"
+        "/usr/bin/time -v minimap2 -t {threads} {params.profile} {input.index} {input.r1_fastq} 2> {log}.tmp"
         " | igzip > {output.paf}.tmp.gz"
         "\n mv -v {output.paf}.tmp.gz {output.paf}"
         "\n mv -v {log}.tmp {log}"
@@ -143,17 +154,19 @@ rule minimap2_paf_single_end:
 
 rule minimap2_paf_paired_end:
     output:
-        paf=temp("runs/minimap2/{dataset}-{genome}-{read_length}/pe.paf.gz")
+        paf=temp("runs/minimap2-{profile}/{dataset}-{genome}-{read_length}/pe.paf.gz")
     input:
         index=rules.minimap2_index.output,
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
         r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
     log:
-        "runs/minimap2/{dataset}-{genome}-{read_length}/pe.paf.log"
+        "runs/minimap2-{profile}/{dataset}-{genome}-{read_length}/pe.paf.log"
+    params:
+        profile=lambda wildcards: MINIMAP2_PROFILE_ARGS[wildcards.profile]
     threads: 8
     shell:
         "cat {input} > /dev/null; "
-        "/usr/bin/time -v minimap2 -t {threads} -x sr {input.index} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
+        "/usr/bin/time -v minimap2 -t {threads} {params.profile} {input.index} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
         " | igzip > {output.paf}.tmp.gz"
         "\n mv -v {output.paf}.tmp.gz {output.paf}"
         "\n mv -v {log}.tmp {log}"
