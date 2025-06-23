@@ -20,9 +20,9 @@ localrules:
 
 rule final:
     input:
-        expand("plots/ends-{ends}-{plot}.pdf", ends=ENDS, plot=PLOTS),
-        expand("plots/genome-{genome}-{plot}.pdf", genome=GENOMES, plot=PLOTS),
-        "result.csv"
+        expand("plots-{truth}/ends-{ends}-{plot}.pdf", truth=("mason", "bwamem"), ends=ENDS, plot=PLOTS),
+        expand("plots-{truth}/genome-{genome}-{plot}.pdf", truth=("mason", "bwamem"), genome=GENOMES, plot=PLOTS),
+        expand("result.{truth}.csv", truth=("mason", "bwamem"))
 
 
 # Map reads with BWA-MEM
@@ -41,7 +41,7 @@ rule bwa_index:
 
 rule bwa_mem_single_end:
     output:
-        bam=temp("runs/bwamem/{dataset}-{genome}-{read_length}/se.bam")
+        bam="runs/bwamem/{dataset}-{genome}-{read_length}/se.bam"
     input:
         fasta="genomes/{genome}.fa",
         index="genomes/{genome}.fa.bwt",
@@ -59,7 +59,7 @@ rule bwa_mem_single_end:
 
 rule bwa_mem_paired_end:
     output:
-        bam=temp("runs/bwamem/{dataset}-{genome}-{read_length}/pe.bam")
+        bam="runs/bwamem/{dataset}-{genome}-{read_length}/pe.bam"
     input:
         fasta="genomes/{genome}.fa",
         index="genomes/{genome}.fa.bwt",
@@ -367,9 +367,9 @@ rule strobealign_paf_single_end:
         "\n mv -v {log}.tmp {log}"
 
 
-rule bam_accuracy:
+rule bam_accuracy_mason:
     output:
-        txt="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.bam.accuracy.txt"
+        txt="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.bam.mason.accuracy.txt"
     input:
         truth="datasets/{dataset}/{genome}-{read_length}/truth.bam",
         bam="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.bam",
@@ -381,9 +381,9 @@ rule bam_accuracy:
         "\n mv -v {output.txt}.tmp {output.txt}"
 
 
-rule paf_accuracy:
+rule paf_accuracy_mason:
     output:
-        txt="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.accuracy.txt"
+        txt="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.mason.accuracy.txt"
     input:
         truth="datasets/{dataset}/{genome}-{read_length}/truth.bam",
         paf="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.gz"
@@ -392,6 +392,35 @@ rule paf_accuracy:
     shell:
         "python get_accuracy.py{params.only_r1} --truth {input.truth} --predicted_paf {input.paf} > {output.txt}.tmp"
         "\n mv -v {output.txt}.tmp {output.txt}"
+
+
+
+rule bam_accuracy_bwamem:
+    output:
+        txt="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.bam.bwamem.accuracy.txt"
+    input:
+        truth="runs/bwamem/{dataset}-{genome}-{read_length}/{ends}.bam",
+        bam="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.bam",
+    params:
+        only_r1=lambda w: " --only-r1" if w.ends == "se" else "",
+        extra=lambda w: " --multiple-primary --synthesize-unmapped" if w.program == "xmapper" else ""
+    shell:
+        "python get_accuracy.py{params.extra}{params.only_r1} --truth {input.truth} --predicted_sam {input.bam} > {output.txt}.tmp"
+        "\n mv -v {output.txt}.tmp {output.txt}"
+
+
+rule paf_accuracy_bwamem:
+    output:
+        txt="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.bwamem.accuracy.txt"
+    input:
+        truth="runs/bwamem/{dataset}-{genome}-{read_length}/{ends}.bam",
+        paf="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.gz"
+    params:
+        only_r1=lambda w: " --only-r1" if w.ends == "se" else ""
+    shell:
+        "python get_accuracy.py{params.only_r1} --truth {input.truth} --predicted_paf {input.paf} > {output.txt}.tmp"
+        "\n mv -v {output.txt}.tmp {output.txt}"
+
 
 rule count_reads_se:
     output:
@@ -411,9 +440,9 @@ rule count_reads_pe:
 
 rule result_csv:
     output:
-        csv="csv/{prog}/{dataset}-{genome}-{read_length}/{ends}.{bampaf}.csv"
+        csv="csv/{prog}/{dataset}-{genome}-{read_length}/{ends}.{bampaf}.{truth}.csv"
     input:
-        txt="runs/{prog}/{dataset}-{genome}-{read_length}/{ends}.{bampaf}.accuracy.txt",
+        txt="runs/{prog}/{dataset}-{genome}-{read_length}/{ends}.{bampaf}.{truth}.accuracy.txt",
         read_count="datasets/{dataset}/{genome}-{read_length}/{ends}.readcount.txt",
         log="runs/{prog}/{dataset}-{genome}-{read_length}/{ends}.{bampaf}.log",
     params:
@@ -442,40 +471,40 @@ def csvs(wildcards):
             if prog == "xmapper" and wildcards.genome == "rye":
                 # X-Mapper crashes on rye
                 continue
-            files.append(f"csv/{prog}/{dataset}-{wildcards.genome}-{read_length}/{wildcards.ends}.bam.csv")
+            files.append(f"csv/{prog}/{dataset}-{wildcards.genome}-{read_length}/{wildcards.ends}.bam.{wildcards.truth}.csv")
     if "map" in MODES:
         files += expand(
-            f"csv/{{prog}}/{{dataset}}-{wildcards.genome}-{{read_length}}/{wildcards.ends}.paf.csv",
+            f"csv/{{prog}}/{{dataset}}-{wildcards.genome}-{{read_length}}/{wildcards.ends}.paf.{wildcards.truth}.csv",
             prog=(prog for prog in PROGRAMS if prog not in {"bwamem", "xmapper"}), dataset=DATASETS, read_length=READ_LENGTHS
         )
     return files
 
 
 rule concat_csvs:
-    output: "csv/{genome,([^/]*)}-{ends,(se|pe)}.csv"
+    output: "csv/{genome,([^/]*)}-{ends,(se|pe)}.{truth}.csv"
     input: csvs
     shell:
         "( echo tool,type,dataset,genome,ends,read_length,read_count,aligned,overaligned,accuracy,jaccuracy,saccuracy,time,memory ; cat {input} ) > {output}"
 
 
 rule concat_genome_csvs:
-    output: "result.csv"
-    input: expand("csv/{genome}-{ends}.csv", ends=ENDS, genome=GENOMES)
+    output: "result.{truth}.csv"
+    input: expand("csv/{genome}-{ends}.{{truth}}.csv", ends=ENDS, genome=GENOMES)
     shell:
         "( head -n 1 {input[0]} ; for f in {input}; do sed 1d $f; done ) > {output}"
 
 rule plot_ends:
-    output: expand("plots/ends-{end}-{plot}.pdf", end=ENDS, plot=PLOTS)
+    output: expand("plots-{{truth}}/ends-{end}-{plot}.pdf", end=ENDS, plot=PLOTS)
     input:
-        csv="result.csv",
+        csv="result.{truth}.csv",
         config="config.yaml",
     shell:
-        "python plots.py -c {input.config} {input.csv} plots/"
+        "python plots.py -c {input.config} {input.csv} plots-{wildcards.truth}/"
 
 rule plot_genomes:
-    output: expand("plots/genome-{genome}-{plot}.pdf", genome=GENOMES, plot=PLOTS)
+    output: expand("plots-{{truth}}/genome-{genome}-{plot}.pdf", genome=GENOMES, plot=PLOTS)
     input:
-        csv="result.csv",
+        csv="result.{truth}.csv",
         config="config.yaml",
     shell:
-        "python plots.py --genome -c {input.config} {input.csv} plots/"
+        "python plots.py --genome -c {input.config} {input.csv} plots-{wildcards.truth}/"
