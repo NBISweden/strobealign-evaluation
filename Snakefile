@@ -9,8 +9,6 @@
 # - chrY (chromosome Y of CHM13)
 
 GENOMES = ("fruitfly", "maize", "CHM13", "rye")
-READ_LENGTHS = (50, 75, 100, 150, 200, 300, 500)
-LONG_READ_LENGTHS = (2000, )  # single-end only
 N_READS = {
     50: 1_000_000,
     75: 1_000_000,
@@ -19,9 +17,12 @@ N_READS = {
     200: 1_000_000,
     300: 1_000_000,
     500: 1_000_000,
-    2000: 250_000,
+    1000: 500_000,
+    5000: 100_000,
+    10000: 50_000,
 }
-
+LONG_READ_LENGTHS = tuple(n for n in N_READS if n >= 1000)  # single-end only
+READ_LENGTHS = tuple(n for n in N_READS if n < 1000)
 DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=READ_LENGTHS)
 LONG_DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=LONG_READ_LENGTHS)
 ENDS = ("pe", "se")
