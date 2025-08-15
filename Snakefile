@@ -99,8 +99,8 @@ rule filter_fruitfly:
         """
         zcat {input} > {output}.tmp.fa
         samtools faidx {output}.tmp.fa
-        # Discard contigs shorter than 1000 bp
-        awk '$2>=10000 {{print $1}}' {output}.tmp.fa.fai > {output}.tmp.regions.txt
+        # Discard contigs shorter than 16 kbp
+        awk '$2>=16000 {{print $1}}' {output}.tmp.fa.fai > {output}.tmp.regions.txt
         samtools faidx -r {output}.tmp.regions.txt {output}.tmp.fa > {output}.tmp2.fa
         mv {output}.tmp2.fa {output}
 
