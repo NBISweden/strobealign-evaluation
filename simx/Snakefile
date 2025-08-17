@@ -10,7 +10,8 @@ PROGRAMS = expand("strobealign-{commit[key]}", commit=COMMITS)
 if config["programs"]:
     PROGRAMS.extend(config["programs"])
 PLOTS = ("accuracy", "aligned", "time", "memory")
-
+# For reads at least this long no paired-end data is used
+LONG_READ_LENGTH = 1000
 COMMIT_TO_HASH_MAP = {c["key"]: c["hash"] for c in COMMITS}
 
 import itertools
@@ -439,14 +440,20 @@ def csvs(wildcards):
     files = []
     if "align" in MODES:
         for prog, dataset, read_length in itertools.product(PROGRAMS, DATASETS, READ_LENGTHS):
+            if read_length >= LONG_READ_LENGTH and wildcards.ends == "pe":
+                continue
             if prog == "xmapper" and wildcards.genome == "rye":
                 # X-Mapper crashes on rye
                 continue
             files.append(f"csv/{prog}/{dataset}-{wildcards.genome}-{read_length}/{wildcards.ends}.bam.csv")
     if "map" in MODES:
+        if wildcards.ends == "se":
+               read_lengths = READ_LENGTHS
+        else:
+            read_lengths = [rl for rl in READ_LENGTHS if rl < LONG_READ_LENGTH]
         files += expand(
             f"csv/{{prog}}/{{dataset}}-{wildcards.genome}-{{read_length}}/{wildcards.ends}.paf.csv",
-            prog=(prog for prog in PROGRAMS if prog not in {"bwamem", "xmapper"}), dataset=DATASETS, read_length=READ_LENGTHS
+            prog=(prog for prog in PROGRAMS if prog not in {"bwamem", "xmapper"}), dataset=DATASETS, read_length=read_lengths
         )
     return files
 
