@@ -457,6 +457,8 @@ def csvs(wildcards):
         for prog, dataset, read_length in itertools.product(PROGRAMS, DATASETS, READ_LENGTHS):
             if read_length >= LONG_READ_LENGTH and wildcards.ends == "pe":
                 continue
+            if prog == "xmapper" and read_length >= LONG_READ_LENGTH:
+                continue
             if prog == "xmapper" and wildcards.genome == "rye":
                 # X-Mapper crashes on rye
                 continue
