@@ -85,7 +85,15 @@ rule minimap2_index:
     input: "genomes/{genome}.fa"
     threads: 8
     shell:
-        "minimap2 -t {threads} -k 21 -w 11 -d {output} {input}"
+        "minimap2 -t {threads} -d {output} {input}"
+
+
+rule minimap2_index_sr:
+    output: "genomes/{genome}.fa.mm2index.sr"
+    input: "genomes/{genome}.fa"
+    threads: 8
+    shell:
+        "minimap2 -t {threads} -x sr -d {output} {input}"
 
 
 def minimap_short_reads(wildcards):
@@ -96,11 +104,18 @@ def minimap_short_reads(wildcards):
     return " -x sr" if int(wildcards.read_length) <= 400 else ""
 
 
+def minimap2_index(wildcards):
+    if int(wildcards.read_length) <= 400:
+        return "genomes/{genome}.fa.mm2index.sr"
+    else:
+        return "genomes/{genome}.fa.mm2index"
+
+
 rule minimap2_single_end:
     output:
         bam=temp("runs/minimap2/{dataset}-{genome}-{read_length}/se.bam")
     input:
-        index=rules.minimap2_index.output,
+        index=minimap2_index,
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
     log:
         "runs/minimap2/{dataset}-{genome}-{read_length}/se.bam.log"
@@ -119,7 +134,7 @@ rule minimap2_paired_end:
     output:
         bam=temp("runs/minimap2/{dataset}-{genome}-{read_length}/pe.bam")
     input:
-        index=rules.minimap2_index.output,
+        index=minimap2_index,
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
         r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
     log:
@@ -128,7 +143,7 @@ rule minimap2_paired_end:
     threads: 8
     shell:
         "cat {input} > /dev/null; "
-        "/usr/bin/time -v minimap2{params.sr} -a -t {threads} {input.index} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
+        "/usr/bin/time -v minimap2{params.sr} -a -t {threads} --frag=yes {input.index} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
         " | grep -v '^@PG'"
         " | samtools view --no-PG -o {output.bam}.tmp.bam -"
         "\n mv -v {output.bam}.tmp.bam {output.bam}"
@@ -139,7 +154,7 @@ rule minimap2_paf_single_end:
     output:
         paf=temp("runs/minimap2/{dataset}-{genome}-{read_length}/se.paf.gz")
     input:
-        index=rules.minimap2_index.output,
+        index=minimap2_index,
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
     log:
         "runs/minimap2/{dataset}-{genome}-{read_length}/se.paf.log"
@@ -157,7 +172,7 @@ rule minimap2_paf_paired_end:
     output:
         paf=temp("runs/minimap2/{dataset}-{genome}-{read_length}/pe.paf.gz")
     input:
-        index=rules.minimap2_index.output,
+        index=minimap2_index,
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
         r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
     log:
@@ -166,7 +181,7 @@ rule minimap2_paf_paired_end:
     threads: 8
     shell:
         "cat {input} > /dev/null; "
-        "/usr/bin/time -v minimap2{params.sr} -t {threads} {input.index} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
+        "/usr/bin/time -v minimap2{params.sr} -t {threads} --frag=yes {input.index} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
         " | igzip > {output.paf}.tmp.gz"
         "\n mv -v {output.paf}.tmp.gz {output.paf}"
         "\n mv -v {log}.tmp {log}"
