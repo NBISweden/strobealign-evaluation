@@ -125,7 +125,7 @@ def configure(config_path):
     }
     programs = config["programs"] if config["programs"] is not None else []
     tools = {program: names[program] for program in programs}
-    for commit in config["commits"]:
+    for commit in config.get("commits", []):
         tools["strobealign-" + commit["key"]] = commit["name"]
 
     modes = sorted(config.get("modes", ["align", "map"]))

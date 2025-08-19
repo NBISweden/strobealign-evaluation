@@ -3,7 +3,7 @@ configfile: "config.yaml"
 DATASETS = config["datasets"]
 GENOMES = config["genomes"]
 READ_LENGTHS = config["read-lengths"]
-COMMITS = config["commits"]
+COMMITS = config.get("commits", [])
 MODES = config.get("modes", ("align", "map"))
 ENDS = config.get("ends", ("se", "pe"))
 PROGRAMS = expand("strobealign-{commit[key]}", commit=COMMITS)
