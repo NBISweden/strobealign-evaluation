@@ -73,7 +73,7 @@ def plot(
     )
     g.figure.suptitle(title)
     g.set_axis_labels("Read length", label)
-    legend_labels = ["Tool:"] + [name for key, name in tools.items()] + ["\nType:"]
+    legend_labels = ["Tool:"] + [name for key, name in tools.items()] + ["\nMode:"]
     assert modes == ["align"] or modes == ["map"] or modes == ["align", "map"]
     legend_labels += modes
     sns.move_legend(g, loc="right", labels=legend_labels)
