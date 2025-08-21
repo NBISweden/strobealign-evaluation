@@ -109,10 +109,6 @@ def configure(config_path):
         # "strobealign_multicontext": "black",
     }
 
-    for commit in config.get("commits", []):
-        if "color" in commit:
-            palette["strobealign-" + commit["key"]] = commit["color"]
-
     read_lengths = [50, 75, 100, 150, 200, 300, 500]
     if config["read-lengths"] is not None:
         read_lengths = sorted(config["read-lengths"])
@@ -125,8 +121,14 @@ def configure(config_path):
     }
     programs = config["programs"] if config["programs"] is not None else []
     tools = {program: names[program] for program in programs}
-    for commit in config.get("commits", []):
-        tools["strobealign-" + commit["key"]] = commit["name"]
+
+    for version in config.get("versions", []):
+        key = version["commit"]
+        if arg := version.get("arguments", ""):
+            key += "-" + arg.replace(" ", "").replace("-", "").replace("=", "")
+        tools["strobealign-" + key] = version["name"]
+        if "color" in version:
+            palette["strobealign-" + key] = version["color"]
 
     modes = sorted(config.get("modes", ["align", "map"]))
 
