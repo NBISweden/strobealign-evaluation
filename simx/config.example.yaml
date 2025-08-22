@@ -1,4 +1,7 @@
 # Example evaluation configuration with most datasets and libraries enabled
+mode:
+  - map
+  - align
 
 ends:
   - se
@@ -38,24 +41,21 @@ programs:
 
 # Strobealign commits
 # For color names, see https://matplotlib.org/stable/gallery/color/named_colors.html
-commits:
-  - key: "v0.14.0"
-    hash: "b3b8f485119ddb8c18d071f45819200cacbbf168"
+versions:
+  - commit: "v0.14.0"
     color: "yellow"
     name: "strobealign 0.14.0"  # used as plot legend
 
-  - key: "v0.15.0"
-    hash: "8f7988143f0000aed93026db2cd4e9e1ff7646f0"
+  - commit: "v0.15.0"
     color: "cyan"
     name: "strobealign 0.15.0"
-
-  - key: "v0.16.0"
-    hash: "8488c45cc9c820d9fbcdaf749932f1f5cdf61728"
+ 
+  - commit: "v0.16.0"
     color: "green"
     name: "strobealign 0.16.0"
-
+ 
+# To Do fix this
 # Rust version is recognized by a rs- prefix in the key
-#  - key: "rs-f2107853"
-#    hash: "f2107853a36ba3901a09600842ad730ea3a9b9d8"
+#  - commit: "f2107853"
 #    color: "purple"
 #    name: "strobealign-rs 0.16"

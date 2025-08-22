@@ -5,14 +5,26 @@ ENDS = config.get("ends", ("se", "pe"))
 DATASETS = config["datasets"]
 GENOMES = config["genomes"]
 READ_LENGTHS = config["read-lengths"]
-COMMITS = config.get("commits", [])
-PROGRAMS = expand("strobealign-{commit[key]}", commit=COMMITS)
+
+VERSIONS = {}
+for version in config.get("versions", []):
+    key = version["commit"]
+    if arg := version.get("arguments", ""):
+        key += "-" + arg.replace(" ", "").replace("-", "").replace("=", "")
+    VERSIONS[key] = {
+        "commit": version["commit"],
+        "arguments": f" {arg}" if arg else "",
+        "name": version["name"],
+        "color": version["color"],
+        "binary": f"bin/strobealign/{version['commit']}",
+    }
+
+PROGRAMS = expand("strobealign-{key}", key=VERSIONS.keys())
 if config["programs"]:
     PROGRAMS.extend(config["programs"])
 PLOTS = ("accuracy", "aligned", "time", "memory")
-# For reads at least this long no paired-end data is used
+# For reads shorter than this, the evaluation includes paired-end data
 LONG_READ_LENGTH = 1000
-COMMIT_TO_HASH_MAP = {c["key"]: c["hash"] for c in COMMITS}
 
 import itertools
 
@@ -257,66 +269,54 @@ rule xmapper_paired_end:
 
 
 rule compile_strobealign:
-    output: "bin/strobealign-{name,(?!rs-).*}"
-    params:
-        commit=lambda wildcards: COMMIT_TO_HASH_MAP[wildcards.name]
+    output: "bin/strobealign/{commit}"
     threads: 4
     shell:
         """
-        wget https://github.com/ksahlin/strobealign/archive/{params.commit}.zip
-        unzip {params.commit}.zip
-        rm {params.commit}.zip
-        cd strobealign-{params.commit}
+        wget https://github.com/ksahlin/strobealign/archive/{wildcards.commit}.zip
+        unzip -d strobealign-{wildcards.commit} {wildcards.commit}.zip
+        rm {wildcards.commit}.zip
+        cd strobealign-{wildcards.commit}/*
         cmake -B build -DCMAKE_C_FLAGS="-march=native" -DCMAKE_CXX_FLAGS="-march=native"
         make -j {threads} -C build strobealign
-        mv build/strobealign ../{output}
-        cd ..
-        rm -rf strobealign-{params.commit}
+        mv build/strobealign ../../{output}
+        cd ../..
+        rm -rf strobealign-{wildcards.commit}
         """
 
 rule compile_strobealign_rs:
-    output: "bin/strobealign-rs-{name}"
-    params:
-        commit=lambda wildcards: COMMIT_TO_HASH_MAP["rs-" + wildcards.name]
+    output: "bin/strobealign-rs/{commit}"
     threads: 8
     shell:
         """
-        wget https://github.com/marcelm/rstrobes/archive/{params.commit}.zip
-        unzip {params.commit}.zip
-        rm {params.commit}.zip
-        cd rstrobes-{params.commit}
+        wget https://github.com/marcelm/rstrobes/archive/{wildcards.commit}.zip
+        unzip -d rstrobes-{wildcards.commit} {wildcards.commit}.zip
+        rm {wildcards.commit}.zip
+        cd rstrobes-{wildcards.commit}/*
         cargo build --release
-        mv target/release/rstrobes ../{output}
-        cd ..
-        rm -rf rstrobes-{params.commit}
+        mv target/release/rstrobes ../../{output}
+        cd ../..
+        rm -rf rstrobes-{wildcards.commit}
         """
 
 # Map reads with strobealign
-
-def extra_strobealign_arguments(wildcards):
-    argument = {c["key"]: c.get("arguments") for c in COMMITS}[wildcards.program]
-    if argument is not None:
-        return " " + argument
-    else:
-        return ""
-
 
 rule strobealign_paired_end:
     output:
         bam=temp("runs/strobealign-{program}/{dataset}-{genome}-{read_length}/pe.bam")
     input:
-        binary="bin/strobealign-{program}",
+        binary=lambda wildcards: VERSIONS[wildcards.program]["binary"],
         fasta="genomes/{genome}.fa",
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
         r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
     params:
-        extra_args=extra_strobealign_arguments
+        extra_args=lambda wildcards: VERSIONS[wildcards.program]["arguments"]
     threads: 8
     log:
         "runs/strobealign-{program}/{dataset}-{genome}-{read_length}/pe.bam.log"
     shell:
         "cat {input} > /dev/null; "
-        "/usr/bin/time -v bin/strobealign-{wildcards.program}{params.extra_args} -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
+        "/usr/bin/time -v {input.binary}{params.extra_args} -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
         " | grep -v '^@PG'"
         " | samtools view --no-PG -o {output.bam}.tmp.bam -"
         "\n mv -v {output.bam}.tmp.bam {output.bam}"
@@ -327,17 +327,17 @@ rule strobealign_single_end:
     output:
         bam=temp("runs/strobealign-{program}/{dataset}-{genome}-{read_length}/se.bam")
     input:
-        binary="bin/strobealign-{program}",
+        binary=lambda wildcards: VERSIONS[wildcards.program]["binary"],
         fasta="genomes/{genome}.fa",
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
     params:
-        extra_args=extra_strobealign_arguments
+        extra_args=lambda wildcards: VERSIONS[wildcards.program]["arguments"]
     threads: 8
     log:
         "runs/strobealign-{program}/{dataset}-{genome}-{read_length}/se.bam.log"
     shell:
         "cat {input} > /dev/null; "
-        "/usr/bin/time -v bin/strobealign-{wildcards.program}{params.extra_args} -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp"
+        "/usr/bin/time -v {input.binary}{params.extra_args} -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp"
         " | grep -v '^@PG'"
         " | samtools view --no-PG -o {output.bam}.tmp.bam -"
         "\n mv -v {output.bam}.tmp.bam {output.bam}"
@@ -348,18 +348,18 @@ rule strobealign_paf_paired_end:
     output:
         paf=temp("runs/strobealign-{program}/{dataset}-{genome}-{read_length}/pe.paf.gz")
     input:
-        binary="bin/strobealign-{program}",
+        binary=lambda wildcards: VERSIONS[wildcards.program]["binary"],
         fasta="genomes/{genome}.fa",
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
         r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
     params:
-        extra_args=extra_strobealign_arguments
+        extra_args=lambda wildcards: VERSIONS[wildcards.program]["arguments"]
     threads: 8
     log:
         "runs/strobealign-{program}/{dataset}-{genome}-{read_length}/pe.paf.log"
     shell:
         "cat {input} > /dev/null; "
-        "/usr/bin/time -v bin/strobealign-{wildcards.program}{params.extra_args} -x -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp | igzip > {output.paf}.tmp.gz"
+        "/usr/bin/time -v {input.binary}{params.extra_args} -x -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp | igzip > {output.paf}.tmp.gz"
         "\n mv -v {output.paf}.tmp.gz {output.paf}"
         "\n mv -v {log}.tmp {log}"
 
@@ -368,17 +368,17 @@ rule strobealign_paf_single_end:
     output:
         paf=temp("runs/strobealign-{program}/{dataset}-{genome}-{read_length}/se.paf.gz")
     input:
-        binary="bin/strobealign-{program}",
+        binary=lambda wildcards: VERSIONS[wildcards.program]["binary"],
         fasta="genomes/{genome}.fa",
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
     params:
-        extra_args=extra_strobealign_arguments
+        extra_args=lambda wildcards: VERSIONS[wildcards.program]["arguments"]
     threads: 8
     log:
         "runs/strobealign-{program}/{dataset}-{genome}-{read_length}/se.paf.log"
     shell:
         "cat {input} > /dev/null; "
-        "/usr/bin/time -v bin/strobealign-{wildcards.program}{params.extra_args} -x -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp | igzip > {output.paf}.tmp.gz"
+        "/usr/bin/time -v {input.binary}{params.extra_args} -x -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp | igzip > {output.paf}.tmp.gz"
         "\n mv -v {output.paf}.tmp.gz {output.paf}"
         "\n mv -v {log}.tmp {log}"
 
