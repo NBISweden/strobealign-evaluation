@@ -469,7 +469,7 @@ rule concat_csvs:
     output: "csv/{genome,([^/]*)}-{ends,(se|pe)}.csv"
     input: csvs
     shell:
-        "( echo tool,type,dataset,genome,ends,read_length,read_count,aligned,overaligned,accuracy,jaccuracy,saccuracy,time,memory ; cat {input} ) > {output}"
+        "( echo tool,mode,dataset,genome,ends,read_length,read_count,aligned,overaligned,accuracy,jaccuracy,saccuracy,time,memory ; cat {input} ) > {output}"
 
 
 rule concat_genome_csvs:

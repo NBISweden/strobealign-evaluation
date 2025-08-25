@@ -60,7 +60,7 @@ def plot(
         x="read_length",
         y=y,
         hue="tool",
-        style="type",
+        style="mode",
         linewidth=linewidth,
         kind="line",
         col="dataset",
