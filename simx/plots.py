@@ -55,6 +55,8 @@ def plot(
         tools.pop("xmapper", None)
         table = table[table["tool"] != "xmapper"]
 
+    table = table[table["mode"].isin(modes)]
+    table = table[table["read_length"].isin(read_lengths)]
     g = sns.relplot(
         data=table,
         x="read_length",
