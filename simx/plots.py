@@ -46,7 +46,6 @@ def plot(
     label: str,
     row: str = "genome",
     linewidth=1.5,
-    xlim=(0, 500),
     logscale: bool = False,
     title: Optional[str] = None,
 ):
@@ -89,6 +88,8 @@ def plot(
             + list(range(1000, 1999, 1000))
         )  # + list(range(10000,39999,10000))
 
+    read_lengths = sorted(set(read_lengths) & set(table["read_length"]))
+    xlim = (min(read_lengths) / 1.05, max(read_lengths) * 1.05)
     g.set(xlim=xlim, xticks=read_lengths)
     g.set_xticklabels(rotation=90, labels=read_lengths)
     g.tight_layout()
@@ -137,7 +138,7 @@ def configure(config_path):
     return palette, read_lengths, tools, modes
 
 
-def plot_ends(df, outfolder, palette, read_lengths, tools, modes, xlim, linewidth):
+def plot_ends(df, outfolder, palette, read_lengths, tools, modes, linewidth):
     for ends, table in df.groupby("ends"):
         title = "Single-end reads" if ends == "se" else "Paired-end reads"
         for y, label, logscale in MEASUREMENT_TYPES:
@@ -151,7 +152,6 @@ def plot_ends(df, outfolder, palette, read_lengths, tools, modes, xlim, linewidt
                 logscale=logscale,
                 row="genome",
                 label=label,
-                xlim=xlim,
                 title=title,
                 linewidth=linewidth,
             )
@@ -159,7 +159,7 @@ def plot_ends(df, outfolder, palette, read_lengths, tools, modes, xlim, linewidt
                 fig.savefig(outfolder / f"ends-{ends}-{y}.pdf")
 
 
-def plot_genomes(df, outfolder, palette, read_lengths, tools, modes, xlim, linewidth):
+def plot_genomes(df, outfolder, palette, read_lengths, tools, modes, linewidth):
     for genome, table in df.groupby("genome"):
         for y, label, logscale in MEASUREMENT_TYPES:
             title = f"{label} – {genome}"
@@ -173,7 +173,6 @@ def plot_genomes(df, outfolder, palette, read_lengths, tools, modes, xlim, linew
                 logscale=logscale,
                 row="ends",
                 label=label,
-                xlim=xlim,
                 title=title,
                 linewidth=linewidth,
             )
@@ -188,15 +187,14 @@ def main(args):
     sns.set_style("whitegrid")
 
     palette, read_lengths, tools, modes = configure(args.config)
-    xlim = (min(read_lengths) / 1.05, max(read_lengths) * 1.05)
 
     table = pd.read_csv(args.csv)
     table["time"] = table["time"] * 1E6 / table["read_count"]
     outfolder = Path(args.outfolder)
     if args.genome:
-        plot_genomes(table, outfolder, palette, read_lengths, tools, modes, xlim, args.linewidth)
+        plot_genomes(table, outfolder, palette, read_lengths, tools, modes, args.linewidth)
     else:
-        plot_ends(table, outfolder, palette, read_lengths, tools, modes, xlim, args.linewidth)
+        plot_ends(table, outfolder, palette, read_lengths, tools, modes, args.linewidth)
 
 
 if __name__ == "__main__":
