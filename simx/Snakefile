@@ -306,7 +306,7 @@ rule strobealign_paired_end:
         "runs/strobealign-{program}/{dataset}-{genome}-{read_length}/pe.bam.log"
     shell:
         "cat {input} > /dev/null; "
-        "/usr/bin/time -v {input.binary}{params.extra_args} -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
+        "/usr/bin/time -v {input.binary}{params.extra_args} -v -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
         " | grep -v '^@PG'"
         " | samtools view --no-PG -o {output.bam}.tmp.bam -"
         "\n mv -v {output.bam}.tmp.bam {output.bam}"
@@ -327,7 +327,7 @@ rule strobealign_single_end:
         "runs/strobealign-{program}/{dataset}-{genome}-{read_length}/se.bam.log"
     shell:
         "cat {input} > /dev/null; "
-        "/usr/bin/time -v {input.binary}{params.extra_args} -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp"
+        "/usr/bin/time -v {input.binary}{params.extra_args} -v -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp"
         " | grep -v '^@PG'"
         " | samtools view --no-PG -o {output.bam}.tmp.bam -"
         "\n mv -v {output.bam}.tmp.bam {output.bam}"
@@ -349,7 +349,7 @@ rule strobealign_paf_paired_end:
         "runs/strobealign-{program}/{dataset}-{genome}-{read_length}/pe.paf.log"
     shell:
         "cat {input} > /dev/null; "
-        "/usr/bin/time -v {input.binary}{params.extra_args} -x -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp | igzip > {output.paf}.tmp.gz"
+        "/usr/bin/time -v {input.binary}{params.extra_args} -v -x -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp | igzip > {output.paf}.tmp.gz"
         "\n mv -v {output.paf}.tmp.gz {output.paf}"
         "\n mv -v {log}.tmp {log}"
 
@@ -368,7 +368,7 @@ rule strobealign_paf_single_end:
         "runs/strobealign-{program}/{dataset}-{genome}-{read_length}/se.paf.log"
     shell:
         "cat {input} > /dev/null; "
-        "/usr/bin/time -v {input.binary}{params.extra_args} -x -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp | igzip > {output.paf}.tmp.gz"
+        "/usr/bin/time -v {input.binary}{params.extra_args} -v -x -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp | igzip > {output.paf}.tmp.gz"
         "\n mv -v {output.paf}.tmp.gz {output.paf}"
         "\n mv -v {log}.tmp {log}"
 
