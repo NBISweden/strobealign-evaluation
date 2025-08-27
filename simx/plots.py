@@ -71,6 +71,8 @@ def plot(
         #col_order=["drosophila", "maize", "CHM13", "rye"],   # unused
         palette=palette,
         alpha=0.7,
+        clip_on=False,
+        zorder=3,
     )
     g.figure.suptitle(title)
     g.set_axis_labels("Read length", label)
@@ -89,7 +91,9 @@ def plot(
         )  # + list(range(10000,39999,10000))
 
     read_lengths = sorted(set(read_lengths) & set(table["read_length"]))
-    xlim = (min(read_lengths) / 1.05, max(read_lengths) * 1.05)
+    # Multiplying by 1.001 prevents 100 (etc.) from being displayed as
+    # 10^2 in the tick labels
+    xlim = (min(read_lengths), max(read_lengths) * 1.001)
     g.set(xlim=xlim, xticks=read_lengths)
     g.set_xticklabels(rotation=90, labels=read_lengths)
     g.tight_layout()
