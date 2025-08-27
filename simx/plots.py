@@ -19,6 +19,9 @@ from pathlib import Path
 from typing import Optional
 
 import matplotlib
+
+matplotlib.use("PDF")
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
