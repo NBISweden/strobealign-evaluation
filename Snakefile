@@ -23,8 +23,11 @@ N_READS = {
 }
 LONG_READ_LENGTHS = tuple(n for n in N_READS if n >= 1000)  # single-end only
 READ_LENGTHS = tuple(n for n in N_READS if n < 1000)
-DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=READ_LENGTHS)
-LONG_DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=LONG_READ_LENGTHS)
+READ_TYPES = ("illumina", "rsii", "ont")
+MODELS = {"rsii": "data/pbsim3/QSHMM-RSII.model", "ont": "data/pbsim3/QSHMM-ONT-HQ.model"}
+DATASETS = expand("{genome}-{read_length}-illumina", genome=GENOMES, read_length=READ_LENGTHS)
+ILLUMINA_LONG_DATASETS = expand("{genome}-{read_length}-illumina", genome=GENOMES, read_length=LONG_READ_LENGTHS)
+LONG_DATASETS = expand("{genome}-{read_length}-{read_type}", genome=GENOMES, read_length=LONG_READ_LENGTHS, read_type=READ_TYPES)
 ENDS = ("pe", "se")
 
 VARIATION_SETTINGS = {
@@ -50,7 +53,7 @@ localrules:
 rule:
     input:
         expand("datasets/{sim}/{ds}/{r}.fastq.gz", sim=SIM, ds=DATASETS, r=(1, 2)),
-        expand("datasets/{sim}/{ds}/truth.bam", sim=SIM, ds=DATASETS + LONG_DATASETS),
+        expand("datasets/{sim}/{ds}/truth.bam", sim=SIM, ds=DATASETS + ILLUMINA_LONG_DATASETS),
         expand("datasets/{sim}/{ds}/1.fastq.gz", sim=SIM, ds=LONG_DATASETS),
 
 # Download genomes
@@ -156,11 +159,13 @@ rule extract_chry:
 
 rule mason_variator:
     output:
-        vcf="variants/{sim}-{genome}.vcf"
+        vcf="variants/{sim}-{genome}.vcf",
+        fasta="variants/{sim}-{genome}.fa"
     input:
         fasta="genomes/{genome}.fa",
         fai="genomes/{genome}.fa.fai",
-        mason_variator="bin/mason_variator"
+        mason_variator="bin/mason_variator",
+        mason_materializer="bin/mason_materializer"
     params:
         variation_settings=lambda wildcards: VARIATION_SETTINGS[wildcards.sim]
     shell:
@@ -281,6 +286,52 @@ rule sim01_long:
         "\nmv {output.bam}.tmp.bam {output.bam}"
 
 
+def pbsim_parameters(wildcards):
+    mean_read_length = int(wildcards.long_read_length)
+    result = "--length-mean {}".format(mean_read_length)
+    reference_path = "variants/" + wildcards.sim + "-" + wildcards.genome + ".fa"
+    ref_len = 0
+    with open(reference_path, "r") as ref:
+        for line in ref:
+            if not line.startswith('>'):
+                ref_len += len(line.strip())    
+    print("Reference lingth: {}".format(ref_len))
+    num_reads = N_READS[mean_read_length]
+    depth = float(num_reads * mean_read_length) / float(ref_len)
+    result += " --depth {}".format(depth)
+    return result
+
+
+rule pbsim:
+    output:
+        fastq="datasets/{sim,sim[1-9]}/{genome}-{long_read_length}-{read_type,(rsii|ont)}/1.fastq.gz",
+        maf="datasets/{sim,sim[1-9]}/{genome}-{long_read_length}-{read_type,(rsii|ont)}/truth.maf"
+    input:
+        fasta="variants/{sim}-{genome}.fa",
+        model=lambda wildcards: MODELS[wildcards.read_type]
+        # rsii_model="data/pbsim3/QSHMM-RSII.model",
+        # ont_model="data/pbsim3/QSHMM-ONT-HQ.model",
+    params:
+        extra=pbsim_parameters,
+        outprefix="datasets/{sim}/pbsim-{genome}-{long_read_length}-{read_type}-tmp",
+        outid="1"
+    log: "logs/pbsim3/{sim}-{genome}-{long_read_length}-{read_type}.log"
+    shell:
+        "pbsim"
+        " --strategy wgs"
+        " --genome {input.fasta}"
+        " --method qshmm"
+        " --qshmm {input.model}"
+        " --prefix {params.outprefix}"
+        " --id-prefix {params.outid}"
+        " {params.extra}"
+        " --length-sd 0"
+        "\ncat {params.outprefix}_*.fq.gz > {output.fastq}"
+        "\ncat {params.outprefix}_*.maf.gz > {output.maf}.gz"
+        "\npigz -d {output.maf}.gz"
+        "\nrm {params.outprefix}_*"
+
+
 # Misc
 
 rule samtools_faidx:
@@ -299,11 +350,22 @@ rule clone_seqan:
 
 
 rule build_mason:
-    output: "bin/mason_variator", "bin/mason_simulator"
+    output: "bin/mason_variator", "bin/mason_simulator", "bin/mason_materializer"
     input: "seqan/cloned"
     threads: 99
     shell:
         "cmake -DSEQAN_BUILD_SYSTEM=APP:mason2 -DSEQAN_ARCH_SSE4=1 -B build-seqan seqan; "
         "cmake --build build-seqan -j {threads}; "
-        "mv build-seqan/bin/mason_simulator build-seqan/bin/mason_variator bin/"
+        "mv build-seqan/bin/mason_simulator build-seqan/bin/mason_variator build-seqan/bin/mason_materializer bin/"
         #"; rm -r seqan"
+
+
+rule download_pbsim_models:
+    output: "data/pbsim3/QSHMM-ONT-HQ.model", "data/pbsim3/QSHMM-RSII.model"
+    params:
+        outdir = "data/pbsim3"
+    threads: 99
+    shell:
+        "git clone https://github.com/yukiteruono/pbsim3"
+        "; mv pbsim3/data/* {params.outdir}"
+        "; rm -rf pbsim3"

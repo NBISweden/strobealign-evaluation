@@ -18,6 +18,13 @@ datasets:
   - sim5
   - sim6
 
+
+read-types:
+  - illumina
+  - rsii
+  - ont
+
+
 genomes:
   - fruitfly
   - maize
