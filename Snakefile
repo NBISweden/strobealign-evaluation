@@ -25,6 +25,11 @@ LONG_READ_LENGTHS = tuple(n for n in N_READS if n >= 1000)  # single-end only
 READ_LENGTHS = tuple(n for n in N_READS if n < 1000)
 READ_TYPES = ("illumina", "rsii", "ont")
 MODELS = {"rsii": "data/pbsim3/QSHMM-RSII.model", "ont": "data/pbsim3/QSHMM-ONT-HQ.model"}
+
+GENOMES = ("fruitfly")
+LONG_READ_LENGTHS = (1000)
+READ_LENGTHS = (200)
+
 DATASETS = expand("{genome}-{read_length}-illumina", genome=GENOMES, read_length=READ_LENGTHS)
 ILLUMINA_LONG_DATASETS = expand("{genome}-{read_length}-illumina", genome=GENOMES, read_length=LONG_READ_LENGTHS)
 LONG_DATASETS = expand("{genome}-{read_length}-{read_type}", genome=GENOMES, read_length=LONG_READ_LENGTHS, read_type=READ_TYPES)
@@ -37,7 +42,8 @@ VARIATION_SETTINGS = {
     "sim5": "--snp-rate 0.005 --small-indel-rate 0.001 --max-small-indel-size 100",
     "sim6": "--snp-rate 0.05 --small-indel-rate 0.002 --max-small-indel-size 100",
 }
-SIM = ["sim0", "sim1"] + list(VARIATION_SETTINGS)
+SIM = ["sim0"] + list(VARIATION_SETTINGS)
+SIM = ["sim1", "sim3"]
 
 
 wildcard_constraints:
@@ -54,7 +60,7 @@ rule:
     input:
         expand("datasets/{sim}/{ds}/{r}.fastq.gz", sim=SIM, ds=DATASETS, r=(1, 2)),
         expand("datasets/{sim}/{ds}/truth.bam", sim=SIM, ds=DATASETS + ILLUMINA_LONG_DATASETS),
-        expand("datasets/{sim}/{ds}/1.fastq.gz", sim=SIM, ds=LONG_DATASETS),
+        expand("datasets/{sim}/{ds}/1.fastq.gz", sim=SIM, ds=LONG_DATASETS)
 
 # Download genomes
 
@@ -304,7 +310,7 @@ def pbsim_parameters(wildcards):
 
 rule pbsim:
     output:
-        fastq="datasets/{sim,sim[1-9]}/{genome}-{long_read_length}-{read_type,(rsii|ont)}/1.fastq.gz",
+        fastq="datasets/{sim,sim[2-9]}/{genome}-{long_read_length}-{read_type,(rsii|ont)}/1.fastq.gz",
         maf="datasets/{sim,sim[1-9]}/{genome}-{long_read_length}-{read_type,(rsii|ont)}/truth.maf"
     input:
         fasta="variants/{sim}-{genome}.fa",
@@ -314,7 +320,7 @@ rule pbsim:
     params:
         extra=pbsim_parameters,
         outprefix="datasets/{sim}/pbsim-{genome}-{long_read_length}-{read_type}-tmp",
-        outid="1"
+        outid="S"
     log: "logs/pbsim3/{sim}-{genome}-{long_read_length}-{read_type}.log"
     shell:
         "pbsim"
@@ -332,11 +338,22 @@ rule pbsim:
         "\nrm {params.outprefix}_*"
 
 
+# Add ground truth to long read sim1
+rule sim1_truth:
+    output:
+        fastq="datasets/sim1/{genome}-{long_read_length}-{read_type,(rsii|ont)}/1.fastq.gz"
+    input: 
+        maf="datasets/sim1/{genome}-{long_read_length}-{read_type,(rsii|ont)}/truth.maf",
+        fai="genomes/{genome}.fa.fai"
+    shell:
+        "paftools.js pbsim2fq {input.fai} {input.maf} | pigz > {output.fastq}"
+
+
 # Misc
 
 rule samtools_faidx:
-    output: "{genome}.fa.fai"
-    input: "{genome}.fa"
+    output: "genomes/{genome}.fa.fai"
+    input: "genomes/{genome}.fa"
     shell: "samtools faidx {input}"
 
 

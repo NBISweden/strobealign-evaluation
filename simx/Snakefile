@@ -38,10 +38,10 @@ rule final:
         expand("plots/ends-{ends}-{plot}.pdf", ends=ENDS, plot=PLOTS),
         expand("plots/genome-{genome}-{plot}.pdf", genome=GENOMES, plot=PLOTS),
         "result.csv",
-        expand("runs/{program}/{dataset}-{genome}-{read_length}-{read_type}/se.paf.gz", 
-                program=PROGRAMS, dataset=DATASETS, genome=GENOMES, read_length=LONG_READ_LENGTHS, read_type=READ_TYPES),
-        expand("runs/minimap2/{dataset}-{genome}-{read_length}-{read_type}/se.paf.gz", 
-                program=PROGRAMS, dataset=DATASETS, genome=GENOMES, read_length=LONG_READ_LENGTHS, read_type=READ_TYPES)
+        # expand("runs/{program}/{dataset}-{genome}-{read_length}-{read_type}/se.paf.gz", 
+        #         program=PROGRAMS, dataset=DATASETS, genome=GENOMES, read_length=LONG_READ_LENGTHS, read_type=READ_TYPES),
+        # expand("runs/minimap2/{dataset}-{genome}-{read_length}-{read_type}/se.paf.gz", 
+        #         program=PROGRAMS, dataset=DATASETS, genome=GENOMES, read_length=LONG_READ_LENGTHS, read_type=READ_TYPES)
 
 
 # Map reads with BWA-MEM
@@ -160,7 +160,7 @@ rule minimap2_paired_end:
 
 rule minimap2_paf_single_end:
     output:
-        paf=temp("runs/minimap2/{dataset}-{genome}-{read_length}-{read_type}/se.paf.gz")
+        paf="runs/minimap2/{dataset}-{genome}-{read_length}-{read_type}/se.paf.gz"
     input:
         index=minimap2_index,
         r1_fastq="datasets/{dataset}/{genome}-{read_length}-{read_type}/1.fastq.gz",
@@ -329,7 +329,7 @@ rule strobealign_paf_paired_end:
 
 rule strobealign_paf_single_end:
     output:
-        paf=temp("runs/strobealign-{program}/{dataset}-{genome}-{read_length}-{read_type}/se.paf.gz")
+        paf="runs/strobealign-{program}/{dataset}-{genome}-{read_length}-{read_type}/se.paf.gz"
     input:
         binary=lambda wildcards: VERSIONS[wildcards.program]["binary"],
         fasta="genomes/{genome}.fa",
@@ -372,6 +372,29 @@ rule paf_accuracy:
         "python -m saeval.get_accuracy{params.only_r1} --truth {input.truth} --predicted_paf {input.paf} > {output.txt}.tmp"
         "\n mv -v {output.txt}.tmp {output.txt}"
 
+
+rule sim1_accuracy:
+    output:
+        txt="runs/{program}/sim1-{genome}-{read_length}-{read_type,(rsii|ont)}/se.paf.accuracy.txt"
+    input:
+        paf="runs/{program}/sim1-{genome}-{read_length}-{read_type,(rsii|ont)}/se.paf.gz",
+        fastq="datasets/sim1/{genome}-{read_length}-{read_type,(rsii|ont)}/1.fastq.gz",
+        n_reads="datasets/sim1/{genome}-{read_length}-{read_type,(rsii|ont)}/se.readcount.txt"
+    params:
+        jaccard_thr=0.1,
+        outdir="runs/{program}/sim1-{genome}-{read_length}-{read_type}"
+    shell:
+        """
+        paftools.js mapeval -r {params.jaccard_thr} {input.paf} > "{params.outdir}/acc.meval"
+        EVAL_STR=$(tail -1 "{params.outdir}/acc.meval")
+        N_READS=$(< {input.n_reads})
+        N_ALIGNED=$(echo "$EVAL_STR" | cut -f6 | tr -d ' ')
+        PER_WRONG=$(echo "$EVAL_STR" | cut -f5 | tr -d ' ')
+        echo -en "$(echo "scale=6; 100 * ($N_ALIGNED / $N_READS)" | bc -l | sed 's/^\./0./')\t" >> {output.txt}
+        echo -en "$(echo "scale=6; 100 * (1 - $PER_WRONG)" | bc -l | sed 's/^\./0./')\t" >> {output.txt}
+        echo -en "0\t0\t0\n" >> {output.txt}
+        """
+
 rule count_reads_se:
     output:
         txt="datasets/{dataset}/{genome}-{read_length}-{read_type}/se.readcount.txt",
@@ -390,16 +413,16 @@ rule count_reads_pe:
 
 rule result_csv:
     output:
-        csv="csv/{prog}/{dataset}-{genome}-{read_length}-illumina/{ends}.{bampaf}.csv"
+        csv="csv/{prog}/{dataset}-{genome}-{read_length}-{read_type}/{ends}.{bampaf}.csv"
     input:
-        txt="runs/{prog}/{dataset}-{genome}-{read_length}-illumina/{ends}.{bampaf}.accuracy.txt",
-        read_count="datasets/{dataset}/{genome}-{read_length}-illumina/{ends}.readcount.txt",
-        log="runs/{prog}/{dataset}-{genome}-{read_length}-illumina/{ends}.{bampaf}.log",
+        txt="runs/{prog}/{dataset}-{genome}-{read_length}-{read_type}/{ends}.{bampaf}.accuracy.txt",
+        read_count="datasets/{dataset}/{genome}-{read_length}-{read_type}/{ends}.readcount.txt",
+        log="runs/{prog}/{dataset}-{genome}-{read_length}-{read_type}/{ends}.{bampaf}.log"
     params:
         typ=lambda wildcards: "map" if wildcards.bampaf == "paf" else "align"
     shell:
         """
-        echo -n {wildcards.prog},{params.typ},{wildcards.dataset},{wildcards.genome},{wildcards.ends},{wildcards.read_length}, > {output.csv}.tmp
+        echo -n {wildcards.prog},{params.typ},{wildcards.dataset},{wildcards.genome},{wildcards.ends},{wildcards.read_length},{wildcards.read_type}, > {output.csv}.tmp
         echo -n $(< {input.read_count}), >> {output.csv}.tmp
         cut -f1,3 {input.txt} | tr '\\t' , | tr -d '\\n' >> {output.csv}.tmp
         echo -n , >> {output.csv}.tmp
@@ -432,8 +455,8 @@ def csvs(wildcards):
         else:
             read_lengths = [rl for rl in READ_LENGTHS if rl < LONG_READ_LENGTH]
         files += expand(
-            f"csv/{{prog}}/{{dataset}}-{wildcards.genome}-{{read_length}}-illumina/{wildcards.ends}.paf.csv",
-            prog=(prog for prog in PROGRAMS if prog not in {"bwamem", "xmapper"}), dataset=DATASETS, read_length=read_lengths
+            f"csv/{{prog}}/{{dataset}}-{wildcards.genome}-{{read_length}}-{{read_type}}/{wildcards.ends}.paf.csv",
+            prog=(prog for prog in PROGRAMS if prog not in {"bwamem", "xmapper"}), dataset=DATASETS, read_length=read_lengths, read_type=READ_TYPES
         )
     return files
 
@@ -442,7 +465,7 @@ rule concat_csvs:
     output: "csv/{genome,([^/]*)}-{ends,(se|pe)}.csv"
     input: csvs
     shell:
-        "( echo tool,mode,dataset,genome,ends,read_length,read_count,aligned,overaligned,accuracy,jaccuracy,saccuracy,time,memory ; cat {input} ) > {output}"
+        "( echo tool,mode,dataset,genome,ends,read_length,read_type,read_count,aligned,overaligned,accuracy,jaccuracy,saccuracy,time,memory ; cat {input} ) > {output}"
 
 
 rule concat_genome_csvs:
