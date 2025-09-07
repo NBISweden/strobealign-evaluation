@@ -5,7 +5,6 @@ ENDS = config.get("ends", ("se", "pe"))
 DATASETS = config["datasets"]
 GENOMES = config["genomes"]
 READ_LENGTHS = config["read-lengths"]
-READ_TYPES = config["read-types"]
 
 VERSIONS = {}
 for version in config.get("versions", []):
@@ -27,6 +26,7 @@ PLOTS = ("accuracy", "aligned", "time", "memory")
 # For reads shorter than this, the evaluation includes paired-end data
 LONG_READ_LENGTH = 1000
 LONG_READ_LENGTHS = tuple(n for n in READ_LENGTHS if n >= 1000)
+LONG_READ_DATASETS = ["sim1ont", "sim1clr"]
 
 import itertools
 
@@ -37,11 +37,7 @@ rule final:
     input:
         expand("plots/ends-{ends}-{plot}.pdf", ends=ENDS, plot=PLOTS),
         expand("plots/genome-{genome}-{plot}.pdf", genome=GENOMES, plot=PLOTS),
-        "result.csv",
-        # expand("runs/{program}/{dataset}-{genome}-{read_length}-{read_type}/se.paf.gz", 
-        #         program=PROGRAMS, dataset=DATASETS, genome=GENOMES, read_length=LONG_READ_LENGTHS, read_type=READ_TYPES),
-        # expand("runs/minimap2/{dataset}-{genome}-{read_length}-{read_type}/se.paf.gz", 
-        #         program=PROGRAMS, dataset=DATASETS, genome=GENOMES, read_length=LONG_READ_LENGTHS, read_type=READ_TYPES)
+        "result.csv"
 
 
 # Map reads with BWA-MEM
@@ -60,14 +56,14 @@ rule bwa_index:
 
 rule bwa_mem_single_end:
     output:
-        bam=temp("runs/bwamem/{dataset}-{genome}-{read_length}-{read_type}/se.bam")
+        bam=temp("runs/bwamem/{dataset}-{genome}-{read_length}/se.bam")
     input:
         fasta="genomes/{genome}.fa",
         index="genomes/{genome}.fa.bwt",
-        r1_fastq="datasets/{dataset}/{genome}-{read_length}-{read_type}/1.fastq.gz",
+        r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
     threads: 8
     log:
-        "runs/bwamem/{dataset}-{genome}-{read_length}-{read_type}/se.bam.log"
+        "runs/bwamem/{dataset}-{genome}-{read_length}/se.bam.log"
     shell:
         "cat {input} > /dev/null; "
         "/usr/bin/time -v bwa mem -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp"
@@ -78,15 +74,15 @@ rule bwa_mem_single_end:
 
 rule bwa_mem_paired_end:
     output:
-        bam=temp("runs/bwamem/{dataset}-{genome}-{read_length}-{read_type}/pe.bam")
+        bam=temp("runs/bwamem/{dataset}-{genome}-{read_length}/pe.bam")
     input:
         fasta="genomes/{genome}.fa",
         index="genomes/{genome}.fa.bwt",
-        r1_fastq="datasets/{dataset}/{genome}-{read_length}-{read_type}/1.fastq.gz",
-        r2_fastq="datasets/{dataset}/{genome}-{read_length}-{read_type}/2.fastq.gz",
+        r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
+        r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
     threads: 8
     log:
-        "runs/bwamem/{dataset}-{genome}-{read_length}-{read_type}/pe.bam.log"
+        "runs/bwamem/{dataset}-{genome}-{read_length}/pe.bam.log"
     shell:
         "cat {input} > /dev/null; "
         "/usr/bin/time -v bwa mem -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
@@ -121,12 +117,12 @@ def minimap2_index(wildcards):
 
 rule minimap2_single_end:
     output:
-        bam=temp("runs/minimap2/{dataset}-{genome}-{read_length}-{read_type}/se.bam")
+        bam=temp("runs/minimap2/{dataset}-{genome}-{read_length}/se.bam")
     input:
         index=minimap2_index,
-        r1_fastq="datasets/{dataset}/{genome}-{read_length}-{read_type}/1.fastq.gz",
+        r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
     log:
-        "runs/minimap2/{dataset}-{genome}-{read_length}-{read_type}/se.bam.log"
+        "runs/minimap2/{dataset}-{genome}-{read_length}/se.bam.log"
     params: profile=minimap2_profile
     threads: 8
     shell:
@@ -140,13 +136,13 @@ rule minimap2_single_end:
 
 rule minimap2_paired_end:
     output:
-        bam=temp("runs/minimap2/{dataset}-{genome}-{read_length}-{read_type}/pe.bam")
+        bam=temp("runs/minimap2/{dataset}-{genome}-{read_length}/pe.bam")
     input:
         index=minimap2_index,
-        r1_fastq="datasets/{dataset}/{genome}-{read_length}-{read_type}/1.fastq.gz",
-        r2_fastq="datasets/{dataset}/{genome}-{read_length}-{read_type}/2.fastq.gz",
+        r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
+        r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
     log:
-        "runs/minimap2/{dataset}-{genome}-{read_length}-{read_type}/pe.bam.log"
+        "runs/minimap2/{dataset}-{genome}-{read_length}/pe.bam.log"
     params: profile=minimap2_profile
     threads: 8
     shell:
@@ -160,12 +156,12 @@ rule minimap2_paired_end:
 
 rule minimap2_paf_single_end:
     output:
-        paf="runs/minimap2/{dataset}-{genome}-{read_length}-{read_type}/se.paf.gz"
+        paf="runs/minimap2/{dataset}-{genome}-{read_length}/se.paf.gz"
     input:
         index=minimap2_index,
-        r1_fastq="datasets/{dataset}/{genome}-{read_length}-{read_type}/1.fastq.gz",
+        r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
     log:
-        "runs/minimap2/{dataset}-{genome}-{read_length}-{read_type}/se.paf.log"
+        "runs/minimap2/{dataset}-{genome}-{read_length}/se.paf.log"
     params: profile=minimap2_profile
     threads: 8
     shell:
@@ -178,13 +174,13 @@ rule minimap2_paf_single_end:
 
 rule minimap2_paf_paired_end:
     output:
-        paf=temp("runs/minimap2/{dataset}-{genome}-{read_length}-{read_type}/pe.paf.gz")
+        paf=temp("runs/minimap2/{dataset}-{genome}-{read_length}/pe.paf.gz")
     input:
         index=minimap2_index,
-        r1_fastq="datasets/{dataset}/{genome}-{read_length}-{read_type}/1.fastq.gz",
-        r2_fastq="datasets/{dataset}/{genome}-{read_length}-{read_type}/2.fastq.gz",
+        r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
+        r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
     log:
-        "runs/minimap2/{dataset}-{genome}-{read_length}-{read_type}/pe.paf.log"
+        "runs/minimap2/{dataset}-{genome}-{read_length}/pe.paf.log"
     params: profile=minimap2_profile
     threads: 8
     shell:
@@ -199,12 +195,12 @@ rule minimap2_paf_paired_end:
 
 rule xmapper_single_end:
     output:
-        bam=temp("runs/xmapper/{dataset}-{genome}-{read_length}-{read_type}/se.bam")
+        bam=temp("runs/xmapper/{dataset}-{genome}-{read_length}/se.bam")
     input:
         fasta="genomes/{genome}.fa",
-        r1_fastq="datasets/{dataset}/{genome}-{read_length}-{read_type}/1.fastq.gz",
+        r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
     log:
-        "runs/xmapper/{dataset}-{genome}-{read_length}-{read_type}/se.bam.log"
+        "runs/xmapper/{dataset}-{genome}-{read_length}/se.bam.log"
     threads: 8
     shell:
         # TODO
@@ -228,15 +224,15 @@ rule xmapper_single_end:
 
 rule xmapper_paired_end:
     output:
-        bam=temp("runs/xmapper/{dataset}-{genome}-{read_length}-{read_type}/pe.bam")
+        bam=temp("runs/xmapper/{dataset}-{genome}-{read_length}/pe.bam")
     input:
         fasta="genomes/{genome}.fa",
-        r1_fastq="datasets/{dataset}/{genome}-{read_length}-{read_type}/1.fastq.gz",
-        r2_fastq="datasets/{dataset}/{genome}-{read_length}-{read_type}/2.fastq.gz",
+        r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
+        r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
     params:
         spacing=lambda wildcards: 300 - 2 * int(wildcards.read_length) if int(wildcards.read_length) < 250 else 700 - 2 * int(wildcards.read_length)
     log:
-        "runs/xmapper/{dataset}-{genome}-{read_length}-{read_type}/pe.bam.log"
+        "runs/xmapper/{dataset}-{genome}-{read_length}/pe.bam.log"
     threads: 8
     shell:
         "cat {input} > /dev/null; "
@@ -266,17 +262,17 @@ rule compile_strobealign:
 
 rule strobealign_paired_end:
     output:
-        bam=temp("runs/strobealign-{program}/{dataset}-{genome}-{read_length}-{read_type}/pe.bam")
+        bam=temp("runs/strobealign-{program}/{dataset}-{genome}-{read_length}/pe.bam")
     input:
         binary=lambda wildcards: VERSIONS[wildcards.program]["binary"],
         fasta="genomes/{genome}.fa",
-        r1_fastq="datasets/{dataset}/{genome}-{read_length}-{read_type}/1.fastq.gz",
-        r2_fastq="datasets/{dataset}/{genome}-{read_length}-{read_type}/2.fastq.gz",
+        r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
+        r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
     params:
         extra_args=lambda wildcards: VERSIONS[wildcards.program]["arguments"]
     threads: 8
     log:
-        "runs/strobealign-{program}/{dataset}-{genome}-{read_length}-{read_type}/pe.bam.log"
+        "runs/strobealign-{program}/{dataset}-{genome}-{read_length}/pe.bam.log"
     shell:
         "cat {input} > /dev/null; "
         "/usr/bin/time -v {input.binary}{params.extra_args} -v -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp"
@@ -288,16 +284,16 @@ rule strobealign_paired_end:
 
 rule strobealign_single_end:
     output:
-        bam=temp("runs/strobealign-{program}/{dataset}-{genome}-{read_length}-{read_type}/se.bam")
+        bam=temp("runs/strobealign-{program}/{dataset}-{genome}-{read_length}/se.bam")
     input:
         binary=lambda wildcards: VERSIONS[wildcards.program]["binary"],
         fasta="genomes/{genome}.fa",
-        r1_fastq="datasets/{dataset}/{genome}-{read_length}-{read_type}/1.fastq.gz",
+        r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
     params:
         extra_args=lambda wildcards: VERSIONS[wildcards.program]["arguments"]
     threads: 8
     log:
-        "runs/strobealign-{program}/{dataset}-{genome}-{read_length}-{read_type}/se.bam.log"
+        "runs/strobealign-{program}/{dataset}-{genome}-{read_length}/se.bam.log"
     shell:
         "cat {input} > /dev/null; "
         "/usr/bin/time -v {input.binary}{params.extra_args} -v -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp"
@@ -309,17 +305,17 @@ rule strobealign_single_end:
 
 rule strobealign_paf_paired_end:
     output:
-        paf=temp("runs/strobealign-{program}/{dataset}-{genome}-{read_length}-{read_type}/pe.paf.gz")
+        paf=temp("runs/strobealign-{program}/{dataset}-{genome}-{read_length}/pe.paf.gz")
     input:
         binary=lambda wildcards: VERSIONS[wildcards.program]["binary"],
         fasta="genomes/{genome}.fa",
-        r1_fastq="datasets/{dataset}/{genome}-{read_length}-{read_type}/1.fastq.gz",
-        r2_fastq="datasets/{dataset}/{genome}-{read_length}-{read_type}/2.fastq.gz",
+        r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
+        r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
     params:
         extra_args=lambda wildcards: VERSIONS[wildcards.program]["arguments"]
     threads: 8
     log:
-        "runs/strobealign-{program}/{dataset}-{genome}-{read_length}-{read_type}/pe.paf.log"
+        "runs/strobealign-{program}/{dataset}-{genome}-{read_length}/pe.paf.log"
     shell:
         "cat {input} > /dev/null; "
         "/usr/bin/time -v {input.binary}{params.extra_args} -v -x -t {threads} {input.fasta} {input.r1_fastq} {input.r2_fastq} 2> {log}.tmp | igzip > {output.paf}.tmp.gz"
@@ -329,16 +325,16 @@ rule strobealign_paf_paired_end:
 
 rule strobealign_paf_single_end:
     output:
-        paf="runs/strobealign-{program}/{dataset}-{genome}-{read_length}-{read_type}/se.paf.gz"
+        paf="runs/strobealign-{program}/{dataset}-{genome}-{read_length}/se.paf.gz"
     input:
         binary=lambda wildcards: VERSIONS[wildcards.program]["binary"],
         fasta="genomes/{genome}.fa",
-        r1_fastq="datasets/{dataset}/{genome}-{read_length}-{read_type}/1.fastq.gz",
+        r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
     params:
         extra_args=lambda wildcards: VERSIONS[wildcards.program]["arguments"]
     threads: 8
     log:
-        "runs/strobealign-{program}/{dataset}-{genome}-{read_length}-{read_type}/se.paf.log"
+        "runs/strobealign-{program}/{dataset}-{genome}-{read_length}/se.paf.log"
     shell:
         "cat {input} > /dev/null; "
         "/usr/bin/time -v {input.binary}{params.extra_args} -v -x -t {threads} {input.fasta} {input.r1_fastq} 2> {log}.tmp | igzip > {output.paf}.tmp.gz"
@@ -348,10 +344,12 @@ rule strobealign_paf_single_end:
 
 rule bam_accuracy:
     output:
-        txt="runs/{program}/{dataset}-{genome}-{read_length}-illumina/{ends}.bam.accuracy.txt"
+        txt="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.bam.accuracy.txt"
     input:
-        truth="datasets/{dataset}/{genome}-{read_length}-illumina/truth.bam",
-        bam="runs/{program}/{dataset}-{genome}-{read_length}-illumina/{ends}.bam",
+        truth="datasets/{dataset}/{genome}-{read_length}/truth.bam",
+        bam="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.bam",
+    wildcard_constraints:
+        sim=r"(?!sim1clr|sim1ont).*"
     params:
         only_r1=lambda w: " --only-r1" if w.ends == "se" else "",
         extra=lambda w: " --multiple-primary --synthesize-unmapped" if w.program == "xmapper" else ""
@@ -362,10 +360,12 @@ rule bam_accuracy:
 
 rule paf_accuracy:
     output:
-        txt="runs/{program}/{dataset}-{genome}-{read_length}-illumina/{ends}.paf.accuracy.txt"
+        txt="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.accuracy.txt"
     input:
-        truth="datasets/{dataset}/{genome}-{read_length}-illumina/truth.bam",
-        paf="runs/{program}/{dataset}-{genome}-{read_length}-illumina/{ends}.paf.gz"
+        truth="datasets/{dataset}/{genome}-{read_length}/truth.bam",
+        paf="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.gz"
+    wildcard_constraints:
+        sim=r"(?!sim1clr|sim1ont).*"
     params:
         only_r1=lambda w: " --only-r1" if w.ends == "se" else ""
     shell:
@@ -375,14 +375,14 @@ rule paf_accuracy:
 
 rule sim1_accuracy:
     output:
-        txt="runs/{program}/sim1-{genome}-{read_length}-{read_type,(rsii|ont)}/se.paf.accuracy.txt"
+        txt="runs/{program}/{dataset,sim1(ont|clr)}-{genome}-{read_length}/se.paf.accuracy.txt"
     input:
-        paf="runs/{program}/sim1-{genome}-{read_length}-{read_type,(rsii|ont)}/se.paf.gz",
-        fastq="datasets/sim1/{genome}-{read_length}-{read_type,(rsii|ont)}/1.fastq.gz",
-        n_reads="datasets/sim1/{genome}-{read_length}-{read_type,(rsii|ont)}/se.readcount.txt"
+        paf="runs/{program}/{dataset,sim1(ont|clr)}-{genome}-{read_length}/se.paf.gz",
+        fastq="datasets/{dataset,sim1(ont|clr)}/{genome}-{read_length}/1.fastq.gz",
+        n_reads="datasets/{dataset,sim1(ont|clr)}/{genome}-{read_length}/se.readcount.txt"
     params:
-        jaccard_thr=0.1,
-        outdir="runs/{program}/sim1-{genome}-{read_length}-{read_type}"
+        jaccard_thr=0.0001,
+        outdir="runs/{program}/{dataset}-{genome}-{read_length}"
     shell:
         """
         paftools.js mapeval -r {params.jaccard_thr} {input.paf} > "{params.outdir}/acc.meval"
@@ -397,32 +397,32 @@ rule sim1_accuracy:
 
 rule count_reads_se:
     output:
-        txt="datasets/{dataset}/{genome}-{read_length}-{read_type}/se.readcount.txt",
+        txt="datasets/{dataset}/{genome}-{read_length}/se.readcount.txt",
     input:
-        fastq="datasets/{dataset}/{genome}-{read_length}-{read_type}/1.fastq.gz"
+        fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz"
     shell:
         "echo $[ $(zcat {input.fastq} | wc -l) / 4 ] > {output}"
 
 rule count_reads_pe:
     output:
-        txt="datasets/{dataset}/{genome}-{read_length}-{read_type}/pe.readcount.txt",
+        txt="datasets/{dataset}/{genome}-{read_length}/pe.readcount.txt",
     input:
-        fastq="datasets/{dataset}/{genome}-{read_length}-{read_type}/1.fastq.gz"
+        fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz"
     shell:
         "echo $[ $(zcat {input.fastq} | wc -l) / 2 ] > {output}"
 
 rule result_csv:
     output:
-        csv="csv/{prog}/{dataset}-{genome}-{read_length}-{read_type}/{ends}.{bampaf}.csv"
+        csv="csv/{prog}/{dataset}-{genome}-{read_length}/{ends}.{bampaf}.csv"
     input:
-        txt="runs/{prog}/{dataset}-{genome}-{read_length}-{read_type}/{ends}.{bampaf}.accuracy.txt",
-        read_count="datasets/{dataset}/{genome}-{read_length}-{read_type}/{ends}.readcount.txt",
-        log="runs/{prog}/{dataset}-{genome}-{read_length}-{read_type}/{ends}.{bampaf}.log"
+        txt="runs/{prog}/{dataset}-{genome}-{read_length}/{ends}.{bampaf}.accuracy.txt",
+        read_count="datasets/{dataset}/{genome}-{read_length}/{ends}.readcount.txt",
+        log="runs/{prog}/{dataset}-{genome}-{read_length}/{ends}.{bampaf}.log"
     params:
         typ=lambda wildcards: "map" if wildcards.bampaf == "paf" else "align"
     shell:
         """
-        echo -n {wildcards.prog},{params.typ},{wildcards.dataset},{wildcards.genome},{wildcards.ends},{wildcards.read_length},{wildcards.read_type}, > {output.csv}.tmp
+        echo -n {wildcards.prog},{params.typ},{wildcards.dataset},{wildcards.genome},{wildcards.ends},{wildcards.read_length}, > {output.csv}.tmp
         echo -n $(< {input.read_count}), >> {output.csv}.tmp
         cut -f1,3 {input.txt} | tr '\\t' , | tr -d '\\n' >> {output.csv}.tmp
         echo -n , >> {output.csv}.tmp
@@ -448,15 +448,19 @@ def csvs(wildcards):
             if prog == "xmapper" and wildcards.genome == "rye":
                 # X-Mapper crashes on rye
                 continue
-            files.append(f"csv/{prog}/{dataset}-{wildcards.genome}-{read_length}-illumina/{wildcards.ends}.bam.csv")
+            if dataset in LONG_READ_DATASETS:
+                continue
+            files.append(f"csv/{prog}/{dataset}-{wildcards.genome}-{read_length}/{wildcards.ends}.bam.csv")
     if "map" in MODES:
         if wildcards.ends == "se":
                read_lengths = READ_LENGTHS
+               datasets = DATASETS
         else:
             read_lengths = [rl for rl in READ_LENGTHS if rl < LONG_READ_LENGTH]
+            datasets = [ds for ds in DATASETS if ds not in LONG_READ_DATASETS]
         files += expand(
-            f"csv/{{prog}}/{{dataset}}-{wildcards.genome}-{{read_length}}-{{read_type}}/{wildcards.ends}.paf.csv",
-            prog=(prog for prog in PROGRAMS if prog not in {"bwamem", "xmapper"}), dataset=DATASETS, read_length=read_lengths, read_type=READ_TYPES
+            f"csv/{{prog}}/{{dataset}}-{wildcards.genome}-{{read_length}}/{wildcards.ends}.paf.csv",
+            prog=(prog for prog in PROGRAMS if prog not in {"bwamem", "xmapper"}), dataset=datasets, read_length=read_lengths
         )
     return files
 
@@ -465,7 +469,7 @@ rule concat_csvs:
     output: "csv/{genome,([^/]*)}-{ends,(se|pe)}.csv"
     input: csvs
     shell:
-        "( echo tool,mode,dataset,genome,ends,read_length,read_type,read_count,aligned,overaligned,accuracy,jaccuracy,saccuracy,time,memory ; cat {input} ) > {output}"
+        "( echo tool,mode,dataset,genome,ends,read_length,read_count,aligned,overaligned,accuracy,jaccuracy,saccuracy,time,memory ; cat {input} ) > {output}"
 
 
 rule concat_genome_csvs:
