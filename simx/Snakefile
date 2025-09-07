@@ -107,7 +107,13 @@ def minimap2_profile(wildcards):
     minimap2’s sr (short reads) profile is advantageous up to
     approximately read length 500
     """
-    return "sr" if int(wildcards.read_length) <= 500 else "lr:hq"
+    if (int(wildcards.read_length) <= 500):
+        return "sr"
+    if (wildcards.dataset == "sim1clr"):
+        return "map-pb"
+    if (wildcards.dataset == "sim1ont"):
+        return "map-ont"
+    return "hq"
 
 
 def minimap2_index(wildcards):
