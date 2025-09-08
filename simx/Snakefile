@@ -26,7 +26,7 @@ PLOTS = ("accuracy", "aligned", "time", "memory")
 # For reads shorter than this, the evaluation includes paired-end data
 LONG_READ_LENGTH = 1000
 LONG_READ_LENGTHS = tuple(n for n in READ_LENGTHS if n >= 1000)
-LONG_READ_DATASETS = ["sim1ont", "sim1clr"]
+LONG_READ_DATASETS = ["sim1ont", "sim1clr", "sim1illumina"]
 
 import itertools
 
@@ -355,7 +355,7 @@ rule bam_accuracy:
         truth="datasets/{dataset}/{genome}-{read_length}/truth.bam",
         bam="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.bam",
     wildcard_constraints:
-        sim=r"(?!sim1clr|sim1ont).*"
+        sim=r"(?!sim1clr|sim1ont|sim1illumina).*"
     params:
         only_r1=lambda w: " --only-r1" if w.ends == "se" else "",
         extra=lambda w: " --multiple-primary --synthesize-unmapped" if w.program == "xmapper" else ""
