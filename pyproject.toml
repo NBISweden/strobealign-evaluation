@@ -1,0 +1,15 @@
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "saeval"
+description = "strobealign evaluation"
+version = "0.1"
+dependencies = [
+    "pysam",
+    "xopen",
+]
+
+[project.scripts]
+#binaryname = "saeval.modulename:functionname"

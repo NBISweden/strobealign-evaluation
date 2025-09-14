@@ -212,7 +212,7 @@ rule xmapper_single_end:
         # X-Mapper outputs multiple primary alignments, which sometimes differ
         # by score. The following option possibly achieves that no
         # suboptimal alignments are output, but we found it too late. Instead,
-        # these are filtered out in get_accuracy.py.
+        # these are filtered out in saeval.get_accuracy.
         # " --max-penalty-span 0"
         "cat {input} > /dev/null; "
         "/usr/bin/time -v"
@@ -383,7 +383,7 @@ rule bam_accuracy:
         only_r1=lambda w: " --only-r1" if w.ends == "se" else "",
         extra=lambda w: " --multiple-primary --synthesize-unmapped" if w.program == "xmapper" else ""
     shell:
-        "python get_accuracy.py{params.extra}{params.only_r1} --truth {input.truth} --predicted_sam {input.bam} > {output.txt}.tmp"
+        "python -m saeval.get_accuracy{params.extra}{params.only_r1} --truth {input.truth} --predicted_sam {input.bam} > {output.txt}.tmp"
         "\n mv -v {output.txt}.tmp {output.txt}"
 
 
@@ -396,7 +396,7 @@ rule paf_accuracy:
     params:
         only_r1=lambda w: " --only-r1" if w.ends == "se" else ""
     shell:
-        "python get_accuracy.py{params.only_r1} --truth {input.truth} --predicted_paf {input.paf} > {output.txt}.tmp"
+        "python -m saeval.get_accuracy{params.only_r1} --truth {input.truth} --predicted_paf {input.paf} > {output.txt}.tmp"
         "\n mv -v {output.txt}.tmp {output.txt}"
 
 rule count_reads_se:
