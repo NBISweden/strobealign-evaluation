@@ -164,7 +164,8 @@ rule minimap2_paf_single_end:
     output:
         paf="runs/minimap2/{dataset}-{genome}-{read_length}/se.paf.gz"
     input:
-        index=minimap2_index,
+        # index=minimap2_index,
+        genome="genomes/{genome}.fa",
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
     log:
         "runs/minimap2/{dataset}-{genome}-{read_length}/se.paf.log"
