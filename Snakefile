@@ -33,12 +33,13 @@ VARIATION_SETTINGS = {
     "sim5": "--snp-rate 0.005 --small-indel-rate 0.001 --max-small-indel-size 100",
     "sim6": "--snp-rate 0.05 --small-indel-rate 0.002 --max-small-indel-size 100",
 }
-SIM = ["sim0"] + list(VARIATION_SETTINGS)
+SIM = ["sim0", "sim1"] + list(VARIATION_SETTINGS)
 
 
 wildcard_constraints:
     read_length=r"\d{2,3}",
-    long_read_length=r"\d{4,5}"
+    long_read_length=r"\d{4,5}",
+    sim01=r"sim[01]"
 
 
 localrules:
@@ -167,9 +168,9 @@ def mason_simulator_parameters(wildcards):
 
 rule mason_simulator:
     output:
-        r1_fastq="datasets/{sim,sim[1-9]}/{genome}-{read_length}/1.fastq.gz",
-        r2_fastq="datasets/{sim,sim[1-9]}/{genome}-{read_length}/2.fastq.gz",
-        bam="datasets/{sim,sim[1-9]}/{genome}-{read_length}/truth.bam"
+        r1_fastq="datasets/{sim,sim[2-9]}/{genome}-{read_length}/1.fastq.gz",
+        r2_fastq="datasets/{sim,sim[2-9]}/{genome}-{read_length}/2.fastq.gz",
+        bam="datasets/{sim,sim[2-9]}/{genome}-{read_length}/truth.bam"
     input:
         fasta="genomes/{genome}.fa",
         vcf="variants/{sim}-{genome}.vcf",
@@ -197,8 +198,8 @@ rule mason_simulator:
 
 rule mason_simulator_long:
     output:
-        fastq="datasets/{sim,sim[1-9]}/{genome}-{long_read_length}/1.fastq.gz",
-        bam="datasets/{sim,sim[1-9]}/{genome}-{long_read_length}/truth.bam"
+        fastq="datasets/{sim,sim[2-9]}/{genome}-{long_read_length}/1.fastq.gz",
+        bam="datasets/{sim,sim[2-9]}/{genome}-{long_read_length}/truth.bam"
     input:
         fasta="genomes/{genome}.fa",
         vcf="variants/{sim}-{genome}.vcf",
@@ -230,32 +231,34 @@ def readsimulator_parameters(wildcards):
     return ""
 
 
-rule sim0:
+rule sim01:
     output:
-        r1_fastq="datasets/sim0/{genome}-{read_length}/1.fastq.gz",
-        r2_fastq="datasets/sim0/{genome}-{read_length}/2.fastq.gz",
-        bam="datasets/sim0/{genome}-{read_length}/truth.bam"
+        r1_fastq="datasets/{sim01}/{genome}-{read_length}/1.fastq.gz",
+        r2_fastq="datasets/{sim01}/{genome}-{read_length}/2.fastq.gz",
+        bam="datasets/{sim01}/{genome}-{read_length}/truth.bam"
     input:
         fasta="genomes/{genome}.fa",
     params:
         extra=readsimulator_parameters,
-        n_reads=lambda wildcards: N_READS[int(wildcards.read_length)]
+        n_reads=lambda wildcards: N_READS[int(wildcards.read_length)],
+        error_rate=lambda wildcards: {"sim0": 0.0, "sim1": 0.1}[wildcards.sim01]
     shell:
-        "python readsimulator.py{params.extra} -n {params.n_reads} --read-length {wildcards.read_length} {input.fasta} | samtools view -o {output.bam}.tmp.bam"
+        "python readsimulator.py{params.extra} -e {params.error_rate} -n {params.n_reads} --read-length {wildcards.read_length} {input.fasta} | samtools view -o {output.bam}.tmp.bam"
         "\nsamtools fastq -N -1 {output.r1_fastq} -2 {output.r2_fastq} {output.bam}.tmp.bam"
         "\nmv {output.bam}.tmp.bam {output.bam}"
 
 
-rule sim0_long:
+rule sim01_long:
     output:
-        fastq="datasets/sim0/{genome}-{long_read_length}/1.fastq.gz",
-        bam="datasets/sim0/{genome}-{long_read_length}/truth.bam"
+        fastq="datasets/{sim01}/{genome}-{long_read_length}/1.fastq.gz",
+        bam="datasets/{sim01}/{genome}-{long_read_length}/truth.bam"
     input:
         fasta="genomes/{genome}.fa",
     params:
-        n_reads=lambda wildcards: N_READS[int(wildcards.long_read_length)]
+        n_reads=lambda wildcards: N_READS[int(wildcards.long_read_length)],
+        error_rate=lambda wildcards: {"sim0": 0.0, "sim1": 0.1}[wildcards.sim01]
     shell:
-        "python readsimulator.py --se -n {params.n_reads} --read-length {wildcards.long_read_length} {input.fasta} | samtools view -o {output.bam}.tmp.bam"
+        "python readsimulator.py --se -e {params.error_rate} -n {params.n_reads} --read-length {wildcards.long_read_length} {input.fasta} | samtools view -o {output.bam}.tmp.bam"
         "\nsamtools fastq -N -0 {output.fastq} {output.bam}.tmp.bam"
         "\nmv {output.bam}.tmp.bam {output.bam}"
 

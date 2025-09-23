@@ -14,7 +14,32 @@ from scipy.stats import norm
 import numpy
 
 
-def output_sam_records(name, seq1, seq2, contig, pos1, pos2):
+NEG = {
+    "A": "CGT",
+    "C": "AGT",
+    "G": "ACT",
+    "T": "ACG",
+    "N": "N",
+}
+
+def mutate(s, error_rate):
+    n = len(s)
+    k = int(n * error_rate)
+    positions = sorted(random.sample(range(len(s)), k=k))
+    m = ""
+    prev = 0
+    for pos in positions:
+        m += s[prev:pos]
+        m += random.choice(NEG[s[pos]])
+        prev = pos + 1
+    m += s[prev:]
+
+    assert len(s) == len(m)
+
+    return m, k
+
+
+def output_sam_records(name, seq1, seq2, contig, pos1, pos2, n_mismatches1, n_mismatches2):
     insert_size = pos2 - pos1 + len(seq2)
     print(
         name,
@@ -28,8 +53,8 @@ def output_sam_records(name, seq1, seq2, contig, pos1, pos2):
         insert_size,
         seq1,
         "H" * len(seq1),  # qual
-        "NM:i:0",
-        f"MD:Z:{len(seq1)}",
+        f"NM:i:{n_mismatches1}",
+        #f"MD:Z:{len(seq1)}",
         sep="\t",
     )
     print(
@@ -44,13 +69,13 @@ def output_sam_records(name, seq1, seq2, contig, pos1, pos2):
         -insert_size,
         seq2,
         "H" * len(seq2),  # qual
-        "NM:i:0",
-        f"MD:Z:{len(seq2)}",
+        f"NM:i:{n_mismatches2}",
+        #f"MD:Z:{len(seq2)}",
         sep="\t",
     )
 
 
-def output_sam_record(name, seq, contig, pos):
+def output_sam_record(name, seq, contig, pos, n_mismatches):
     print(
         name,
         0,
@@ -63,13 +88,13 @@ def output_sam_record(name, seq, contig, pos):
         0,
         seq,
         "H" * len(seq),  # qual
-        "NM:i:0",
-        f"MD:Z:{len(seq)}",
+        f"NM:i:{n_mismatches}",
+        #f"MD:Z:{len(seq)}",
         sep="\t",
     )
 
 
-def simulate_paired_end_reads(fasta, n, read_length, mean_insert_size, stddev_insert_size):
+def simulate_paired_end_reads(fasta, n, read_length, error_rate, mean_insert_size, stddev_insert_size):
     contig_names = list(fasta.keys())
     contig_lengths = [len(fr) for fr in fasta.values()]
     i = 0
@@ -87,13 +112,18 @@ def simulate_paired_end_reads(fasta, n, read_length, mean_insert_size, stddev_in
             seq2 = fasta[contig][pos2:pos2+read_length].seq.upper()
             if seq1.count("N") >= read_length / 10 or seq2.count("N") >= read_length / 10:
                 continue
-            output_sam_records(name, seq1, seq2, contig, pos1, pos2)
+            if error_rate > 0:
+                seq1, n_mismatches1 = mutate(seq1, error_rate)
+                seq2, n_mismatches2 = mutate(seq2, error_rate)
+            else:
+                n_mismatches1 = n_mismatches2 = 0
+            output_sam_records(name, seq1, seq2, contig, pos1, pos2, n_mismatches1, n_mismatches2)
             i += 1
             if i == n:
                 break
 
 
-def simulate_single_end_reads(fasta, n, read_length):
+def simulate_single_end_reads(fasta, n, read_length, error_rate):
     contig_names = list(fasta.keys())
     contig_lengths = [len(fr) for fr in fasta.values()]
     i = 0
@@ -107,7 +137,11 @@ def simulate_single_end_reads(fasta, n, read_length):
             seq = fasta[contig][pos:pos+read_length].seq.upper()
             if seq.count("N") >= read_length / 10:
                 continue
-            output_sam_record(name, seq, contig, pos)
+            if error_rate > 0:
+                seq, n_mismatches = mutate(seq, error_rate)
+            else:
+                n_mismatches = 0
+            output_sam_record(name, seq, contig, pos, n_mismatches)
             i += 1
             if i == n:
                 break
@@ -116,6 +150,7 @@ def simulate_single_end_reads(fasta, n, read_length):
 def main():
     parser = ArgumentParser()
     parser.add_argument("-n", type=int, default=1_000_000, help="No. of read pairs to simulate")
+    parser.add_argument("--error-rate", "-e", type=float, default=0, help="Error rate (only mismatches)")
     parser.add_argument("--se", dest="paired", action="store_false", default=True, help="Simulate single-end reads")
     parser.add_argument("--mean-insert-size", type=int, default=500)
     parser.add_argument("--stddev-insert-size", type=int, default=30)
@@ -138,9 +173,9 @@ def main():
             print("@SQ", f"SN:{name}", f"LN:{len(record)}", sep="\t")
 
         if args.paired:
-            simulate_paired_end_reads(records, args.n, read_length, args.mean_insert_size, args.stddev_insert_size)
+            simulate_paired_end_reads(records, args.n, read_length, args.error_rate, args.mean_insert_size, args.stddev_insert_size)
         else:
-            simulate_single_end_reads(records, args.n, read_length)
+            simulate_single_end_reads(records, args.n, read_length, args.error_rate)
 
 
 if __name__ == "__main__":
