@@ -265,8 +265,7 @@ def get_stats(truth, predicted, output_falsehq, outfile) -> Accuracy:
                 ):
                     correct += 1
                 elif predicted_interval.quality_score >= 15 and output_falsehq: 
-                    read_out.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(query_name, predicted_interval.name, predicted_interval.start, predicted_interval.end, 
-                                                                         true_interval.name, true_interval.start, true_interval.end))
+                    read_out.write("{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(query_name, true_interval.name, true_interval.start, true_interval.end))
                 correct_jaccard += jaccard_overlap(
                     predicted_interval.start, predicted_interval.end, true_interval.start, true_interval.end
                 )

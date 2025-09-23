@@ -376,7 +376,7 @@ rule paf_accuracy:
     params:
         only_r1=lambda w: " --only-r1" if w.ends == "se" else ""
     shell:
-        "python -m saeval.get_accuracy{params.only_r1} --truth {input.truth} --predicted_paf {input.paf} > {output.txt}.tmp"
+        "python -m saeval.get_accuracy{params.only_r1} --truth {input.truth} --predicted_paf {input.paf} --outfile {output.txt}.tmp --output-falsehq > {output.txt}.tmp"
         "\n mv -v {output.txt}.tmp {output.txt}"
 
 
