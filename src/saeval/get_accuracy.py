@@ -8,7 +8,7 @@ from pathlib import Path
 from itertools import zip_longest, groupby
 from dataclasses import dataclass
 
-from pysam import AlignmentFile
+from pysam import AlignmentFile, FastxFile
 from xopen import xopen
 
 CIGAR_MATCH = 0  # M
@@ -120,6 +120,26 @@ def pick_random_primary_paired_end_iter(bam_iter):
             pairs = [(r1, r2) for (r1, r2) in pairs if r1.get_tag("AS") + r2.get_tag("AS") == best_score]
 
             yield from random.choice(pairs)
+
+
+def read_fastq(fastq_path):
+    read_positions = {}
+    with FastxFile(fastq_path) as fastq_handle:
+        for read in fastq_handle:
+            # S1_1!chr1!1787012!1788012!+
+            # print(read.name)
+            gt_pattern = r'S(\d+)_(\d+)!(.*)!(\d+)!(\d+)!(\+|\-)'
+            match = re.search(gt_pattern, read.name)
+    
+            if not match:
+                raise ValueError(f"Could not parse read name: {read.name}, please make sure that input ground truth file was generated using pbsim2fq")
+            
+            _, _, ref_name, ref_start, ref_end, _ = match.groups()
+            if not read.name.endswith("/1"):
+                query_name = read.name + "/1"
+            read_positions[query_name] = ReferenceInterval(ref_name, int(ref_start), int(ref_end), 0)
+    
+    return read_positions
 
 
 def read_alignments(bam_path, skip_r2: bool):
@@ -438,7 +458,10 @@ def measure_accuracy(
 ) -> Accuracy:
 
     if force_paf or predicted.name.endswith(".paf") or predicted.name.endswith(".paf.gz"):
-        truth = read_alignments(truth, skip_r2)
+        if truth.name.endswith(".fastq") or truth.name.endswith(".fastq.gz"):
+            truth = read_fastq(truth)
+        else:
+            truth = read_alignments(truth, skip_r2)
         predicted, mapped_to_multiple_pos = read_paf(predicted)
         result = get_stats(truth, predicted, output_falsehq, outfile)
     else:
@@ -469,7 +492,7 @@ if __name__ == "__main__":
     parser.add_argument("--multiple-primary", default=False, action="store_true", help="Allow multiple primary alignments (violates SAM specification) and pick one randomly")
     parser.add_argument("--synthesize-unmapped", default=False, action="store_true", help="If an alignment is missing from predicted, assume the read is unmapped")
     parser.add_argument("--output-falsehq", default=False, action="store_true", help="Output inaccurate reads with QS=60 (paf only)")
-    parser.add_argument("--truth", type=Path, help="True SAM/BAM")
+    parser.add_argument("--truth", type=Path, help="True SAM/BAM/FASTQ (if using pbsim3 ground truth)")
     parser.add_argument("--predicted", "--predicted_sam", "--predicted_paf", type=Path, help="Predicted SAM/BAM/PAF")
     parser.add_argument("--paf", dest="force_paf", action="store_true", help="Assume PAF input for predicted (usually autodetected, only needed if reading PAF from stdin)")
     parser.add_argument("--outfile", help="Path to file")

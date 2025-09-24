@@ -382,25 +382,40 @@ rule paf_accuracy:
 
 rule sim1_accuracy:
     output:
-        txt="runs/{program}/{dataset,sim1(ont|clr)}-{genome}-{read_length}/se.paf.accuracy.txt"
+        txt="runs/{program}/{dataset,sim1(ont|clr)}-{genome}-{read_length}/{ends}.paf.accuracy.txt"
     input:
-        paf="runs/{program}/{dataset,sim1(ont|clr)}-{genome}-{read_length}/se.paf.gz",
-        fastq="datasets/{dataset,sim1(ont|clr)}/{genome}-{read_length}/1.fastq.gz",
-        n_reads="datasets/{dataset,sim1(ont|clr)}/{genome}-{read_length}/se.readcount.txt"
+        truth="datasets/{dataset,sim1(ont|clr)}/{genome}-{read_length}/1.fastq.gz",
+        paf="runs/{program}/{dataset,sim1(ont|clr)}-{genome}-{read_length}/{ends}.paf.gz"
+    wildcard_constraints:
+        sim=r"(sim1clr|sim1ont).*"
     params:
-        jaccard_thr=0.0001,
-        outdir="runs/{program}/{dataset}-{genome}-{read_length}"
+        only_r1=lambda w: " --only-r1" if w.ends == "se" else ""
     shell:
-        """
-        paftools.js mapeval -r {params.jaccard_thr} {input.paf} > "{params.outdir}/acc.meval"
-        EVAL_STR=$(tail -1 "{params.outdir}/acc.meval")
-        N_READS=$(< {input.n_reads})
-        N_ALIGNED=$(echo "$EVAL_STR" | cut -f6 | tr -d ' ')
-        PER_WRONG=$(echo "$EVAL_STR" | cut -f5 | tr -d ' ')
-        echo -en "$(echo "scale=6; 100 * ($N_ALIGNED / $N_READS)" | bc -l | sed 's/^\./0./')\t" >> {output.txt}
-        echo -en "$(echo "scale=6; 100 * (1 - $PER_WRONG)" | bc -l | sed 's/^\./0./')\t" >> {output.txt}
-        echo -en "0\t0\t0\n" >> {output.txt}
-        """
+        "python -m saeval.get_accuracy{params.only_r1} --truth {input.truth} --predicted_paf {input.paf} --outfile {output.txt}.tmp --output-falsehq > {output.txt}.tmp"
+        "\n mv -v {output.txt}.tmp {output.txt}"
+
+
+# rule sim1_accuracy:
+#     output:
+#         txt="runs/{program}/{dataset,sim1(ont|clr)}-{genome}-{read_length}/se.paf.accuracy.txt"
+#     input:
+#         paf="runs/{program}/{dataset,sim1(ont|clr)}-{genome}-{read_length}/se.paf.gz",
+#         fastq="datasets/{dataset,sim1(ont|clr)}/{genome}-{read_length}/1.fastq.gz",
+#         n_reads="datasets/{dataset,sim1(ont|clr)}/{genome}-{read_length}/se.readcount.txt"
+#     params:
+#         jaccard_thr=0.0001,
+#         outdir="runs/{program}/{dataset}-{genome}-{read_length}"
+#     shell:
+#         """
+#         paftools.js mapeval -r {params.jaccard_thr} {input.paf} > "{params.outdir}/acc.meval"
+#         EVAL_STR=$(tail -1 "{params.outdir}/acc.meval")
+#         N_READS=$(< {input.n_reads})
+#         N_ALIGNED=$(echo "$EVAL_STR" | cut -f6 | tr -d ' ')
+#         PER_WRONG=$(echo "$EVAL_STR" | cut -f5 | tr -d ' ')
+#         echo -en "$(echo "scale=6; 100 * ($N_ALIGNED / $N_READS)" | bc -l | sed 's/^\./0./')\t" >> {output.txt}
+#         echo -en "$(echo "scale=6; 100 * (1 - $PER_WRONG)" | bc -l | sed 's/^\./0./')\t" >> {output.txt}
+#         echo -en "0\t0\t0\n" >> {output.txt}
+#         """
 
 rule count_reads_se:
     output:
