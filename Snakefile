@@ -8,7 +8,7 @@
 # - ecoli50 (fifty E. coli genomes)
 # - chrY (chromosome Y of CHM13)
 
-GENOMES = ("fruitfly", "maize", "CHM13", "rye")
+GENOMES = ("fruitfly", "maize", "CHM13", "rye", "chrY")
 N_READS = {
     50: 1_000_000,
     75: 1_000_000,
