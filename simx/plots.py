@@ -59,12 +59,17 @@ def plot(
 
     table = table[table["mode"].isin(modes)]
     table = table[table["read_length"].isin(read_lengths)]
+
+    use_style_for_tools = len(set(table["mode"])) == 1
+    if use_style_for_tools and title is not None:
+        mode = table["mode"].iloc[0]
+        title += f" (mode: {mode})"
     g = sns.relplot(
         data=table,
         x="read_length",
         y=y,
         hue="tool",
-        style="mode",
+        style="tool" if use_style_for_tools else "mode",
         linewidth=linewidth,
         kind="line",
         col="dataset",
@@ -79,9 +84,14 @@ def plot(
     )
     g.figure.suptitle(title)
     g.set_axis_labels("Read length", label)
-    legend_labels = ["Tool:"] + [name for key, name in tools.items()] + ["\nMode:"]
-    assert modes == ["align"] or modes == ["map"] or modes == ["align", "map"]
-    legend_labels += modes
+
+    if not use_style_for_tools:
+        legend_labels = ["Tool:"] + [name for key, name in tools.items()]
+        legend_labels += ["\nMode:"]
+        assert modes == ["align"] or modes == ["map"] or modes == ["align", "map"]
+        legend_labels += modes
+    else:
+        legend_labels = [name for key, name in tools.items()]
     sns.move_legend(g, loc="right", labels=legend_labels)
 
     g.set(xscale="log")
