@@ -30,6 +30,14 @@ class ReferenceInterval:
     start: int
     end: int
 
+    def intersects(self, other: "ReferenceInterval"):
+        if self.name != other.name:
+            return False
+        return overlap(self.start, self.end, other.start, other.end)
+
+    def __str__(self):
+        return f"{self.name}:{self.start}-{self.end}"
+
 
 @dataclass
 class AccuracyPercentages:
