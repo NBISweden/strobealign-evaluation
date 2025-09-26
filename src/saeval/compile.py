@@ -32,7 +32,8 @@ def compile_strobealign(commit_hash):
                 compiledir,
                 "-DCMAKE_RULE_MESSAGES=OFF",
                 "--log-level=NOTICE",
-                "-DENABLE_AVX=ON",
+                '-DCMAKE_C_FLAGS="-march=native"',
+                '-DCMAKE_CXX_FLAGS="-march=native"',
                 "-B",
                 Path(compiledir) / "build",
             ]
