@@ -260,7 +260,7 @@ rule xmapper_paired_end:
 
 rule compile_strobealign:
     output: "bin/strobealign/{commit}"
-    threads: 4
+    threads: 99
     shell:
         """
         wget https://github.com/ksahlin/strobealign/archive/{wildcards.commit}.zip
