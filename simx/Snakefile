@@ -113,7 +113,9 @@ def minimap2_profile(wildcards):
         return "map-pb"
     if (wildcards.dataset == "sim1ont"):
         return "map-ont"
-    return "hq"
+    if (wildcards.dataset == "sim1hifi"):
+        return "map-hifi"
+    return "lr:hq"
 
 
 def minimap2_index(wildcards):
