@@ -24,3 +24,6 @@ dependencies:
   - isa-l
   - pyyaml
   - pyfaidx
+  - pbsim3
+  - pbccs
+  - biopython

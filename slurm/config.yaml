@@ -31,6 +31,9 @@ set-resources:
   sim0_long:
     runtime: 900
 
+  ccs:
+    mem_mb: 32000
+
   bwa_index:
     mem_mb: 8000
     runtime: 360

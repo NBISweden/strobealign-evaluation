@@ -23,10 +23,10 @@ N_READS = {
 }
 LONG_READ_LENGTHS = tuple(n for n in N_READS if n >= 1000)  # single-end only
 READ_LENGTHS = tuple(n for n in N_READS if n < 1000)
-MODELS = {"sim1clr": "data/pbsim3/QSHMM-RSII.model", "sim1ont": "data/pbsim3/QSHMM-ONT-HQ.model"}
+MODELS = {"sim1clr": "data/pbsim3/QSHMM-RSII.model", "sim1ont": "data/pbsim3/QSHMM-ONT-HQ.model", "sim1hifi": "data/pbsim3/QSHMM-RSII.model"}
 
-# GENOMES = ("fruitfly")
-LONG_READ_LENGTHS = (1000, 5000, 10000)
+GENOMES = ("ecoli", "fruitfly")
+LONG_READ_LENGTHS = (1000, 5000)
 READ_LENGTHS = (200)
 
 DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=READ_LENGTHS)
@@ -42,8 +42,9 @@ VARIATION_SETTINGS = {
     "sim6": "--snp-rate 0.05 --small-indel-rate 0.002 --max-small-indel-size 100",
 }
 SIM = ["sim0"] + list(VARIATION_SETTINGS)
-SIM = ["sim3"]
-LONG_SIM = SIM + ["sim1illumina","sim1clr","sim1ont"]
+SIM = ["sim3", "sim1illumina"]
+LONG_SIM = ["sim1clr","sim1ont","sim1hifi"]
+# LONG_SIM = ["sim1hifi"]
 
 
 wildcard_constraints:
@@ -59,8 +60,9 @@ localrules:
 rule:
     input:
         expand("datasets/{sim}/{ds}/{r}.fastq.gz", sim=SIM, ds=DATASETS, r=(1, 2)),
-        expand("datasets/{sim}/{ds}/truth.bam", sim=SIM, ds=DATASETS + ILLUMINA_LONG_DATASETS),
-        expand("datasets/{sim}/{ds}/1.fastq.gz", sim=LONG_SIM, ds=LONG_DATASETS)
+        expand("datasets/{sim}/{ds}/truth.bam", sim=SIM, ds=DATASETS + LONG_DATASETS),
+        expand("datasets/{sim}/{ds}/1.fastq.gz", sim=SIM + LONG_SIM, ds=LONG_DATASETS),
+        expand("datasets/{sim}/{ds}/truth.maf", sim=LONG_SIM, ds=LONG_DATASETS)
 
 # Download genomes
 
@@ -173,7 +175,7 @@ rule mason_variator:
         mason_variator="bin/mason_variator",
         mason_materializer="bin/mason_materializer"
     wildcard_constraints:
-        sim=r"(?!sim1clr|sim1ont|sim0).*"
+        sim=r"(?!sim1clr|sim1ont|sim1hifi|sim0).*"
     params:
         variation_settings=lambda wildcards: VARIATION_SETTINGS[wildcards.sim]
     shell:
@@ -309,22 +311,34 @@ def pbsim_parameters(wildcards):
                 ref_len += len(line.strip())    
     # print("Reference lingth: {}".format(ref_len))
     num_reads = N_READS[mean_read_length]
+    if wildcards.sim == "sim1hifi":
+        num_reads /= 50
     depth = float(num_reads * mean_read_length) / float(ref_len)
     result += " --depth {}".format(depth)
+    if wildcards.sim == "sim1hifi":
+        result += " --pass-num 10"
     return result
+
+
+def pbsim_outprefix(wildcards):
+    return f"datasets/{wildcards.sim}/{wildcards.genome}-{wildcards.long_read_length}/tmp"
+
+def first_bam_name(wildcards):
+    if wildcards.sim == "sim1hifi":
+        return pbsim_outprefix(wildcards) + "_0001.bam"
+    return []
 
 
 rule pbsim:
     output:
-        maf=temp("datasets/{sim,sim1(clr|ont)}/{genome}-{long_read_length}/truth.maf")
+        maf="datasets/{sim,sim1(clr|ont)}/{genome}-{long_read_length}/truth.maf",
+        fastq="datasets/{sim,sim1(clr|ont)}/{genome}-{long_read_length}/1.fastq.gz"
     input:
         fasta="genomes/{genome}.fa",
         model=lambda wildcards: MODELS[wildcards.sim]
-        # clr_model="data/pbsim3/QSHMM-RSII.model",
-        # ont_model="data/pbsim3/QSHMM-ONT-HQ.model",
     params:
         extra=pbsim_parameters,
-        outprefix="datasets/{sim}/pbsim-{genome}-{long_read_length}-tmp",
+        outprefix=pbsim_outprefix,
         outid="S"
     log: "logs/pbsim3/{sim}-{genome}-{long_read_length}.log"
     shell:
@@ -337,22 +351,82 @@ rule pbsim:
         " --id-prefix {params.outid}"
         " {params.extra}"
         " --length-sd 0"
-        # "\ncat {params.outprefix}_*.fq.gz > {output.fastq}"
+        "\ncat {params.outprefix}_*.fq.gz > {output.fastq}"
         "\ncat {params.outprefix}_*.maf.gz > {output.maf}.gz"
         "\npigz -d {output.maf}.gz"
-        "\nrm {params.outprefix}_*"
+        "\nrm {params.outprefix}_*.ref"
+        "\nrm {params.outprefix}_*.maf.gz"
+        "\nrm {params.outprefix}_*.fq.gz"
 
 
-# Add ground truth to long read sim1
-rule sim1_truth:
+rule pbsim_hifi:
     output:
-        fastq="datasets/{sim,sim1(clr|ont)}/{genome}-{long_read_length}/1.fastq.gz"
-    input: 
-        maf="datasets/{sim,sim1(clr|ont)}/{genome}-{long_read_length}/truth.maf",
-        fai="genomes/{genome}.fa.fai"
+        maf="datasets/{sim,sim1(hifi)}/{genome}-{long_read_length}/truth.maf",
+        bam=temp("datasets/{sim,sim1hifi}/{genome}-{long_read_length}/1.bam")
+    input:
+        fasta="genomes/{genome}.fa",
+        model=lambda wildcards: MODELS[wildcards.sim]
+    params:
+        extra=pbsim_parameters,
+        outprefix=pbsim_outprefix,
+        outid="S"
+    log: "logs/pbsim3/{sim,sim1(hifi)}-{genome}-{long_read_length}.log"
     shell:
-        "paftools.js pbsim2fq {input.fai} {input.maf} | pigz > {output.fastq}"
+        "pbsim"
+        " --strategy wgs"
+        " --genome {input.fasta}"
+        " --method qshmm"
+        " --qshmm {input.model}"
+        " --prefix {params.outprefix}"
+        " --id-prefix {params.outid}"
+        " {params.extra}"
+        " --length-sd 0"
+        "\ncat {params.outprefix}_*.maf.gz > {output.maf}.gz"
+        "\npigz -d {output.maf}.gz"
+        "\nrm {params.outprefix}_*.ref"
+        "\nrm {params.outprefix}_*.maf.gz"
+        "\nsamtools merge -o {output.bam} {params.outprefix}_*.bam"
+        "\nrm {params.outprefix}_*.bam"
 
+
+# Add ground truth to long read sim1 
+# rule sim1_truth:
+#     output:
+#         fastq="datasets/{sim,sim1(clr|ont)}/{genome}-{long_read_length}/1.fastq.gz"
+#     input: 
+#         maf="datasets/{sim,sim1(clr|ont)}/{genome}-{long_read_length}/truth.maf",
+#         fai="genomes/{genome}.fa.fai"
+#     shell:
+#         "paftools.js pbsim2fq {input.fai} {input.maf} | pigz > {output.fastq}"
+
+
+# rule merge_pbsim:
+#     output:
+#         temp("datasets/{sim,sim1hifi}/{genome}-{long_read_length}/1.bam")
+#     input:
+#         bam=first_bam_name
+#     params:
+#         bamprefix=pbsim_outprefix
+#     shell:
+#         """
+#         samtools merge -o {output} {params.bamprefix}*.bam
+#         rm {params.bamprefix}*.bam
+#         """ 
+
+
+rule ccs:
+    output:
+        fastq="datasets/sim1hifi/{genome}-{long_read_length}/1.fastq.gz"
+    input:
+        bam="datasets/sim1hifi/{genome}-{long_read_length}/1.bam"
+    log:
+        "datasets/sim1hifi/{genome}-{long_read_length}/ccs.log"
+    threads:
+        60
+    shell:
+        """
+        ccs --log-file {log} -j {threads} {input.bam} {output.fastq} 
+        """
 
 # Misc
 

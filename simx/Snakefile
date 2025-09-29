@@ -26,7 +26,7 @@ PLOTS = ("accuracy", "aligned", "time", "memory")
 # For reads shorter than this, the evaluation includes paired-end data
 LONG_READ_LENGTH = 1000
 LONG_READ_LENGTHS = tuple(n for n in READ_LENGTHS if n >= 1000)
-LONG_READ_DATASETS = ["sim1ont", "sim1clr", "sim1illumina"]
+LONG_READ_DATASETS = ["sim1ont", "sim1clr", "sim1illumina", "sim1hifi"]
 
 import itertools
 
@@ -356,7 +356,7 @@ rule bam_accuracy:
         truth="datasets/{dataset}/{genome}-{read_length}/truth.bam",
         bam="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.bam",
     wildcard_constraints:
-        sim=r"(?!sim1clr|sim1ont|sim1illumina).*"
+        dataset=r"(?!sim1clr|sim1ont|sim1illumina|sim1hifi).*"
     params:
         only_r1=lambda w: " --only-r1" if w.ends == "se" else "",
         extra=lambda w: " --multiple-primary --synthesize-unmapped" if w.program == "xmapper" else ""
@@ -372,26 +372,29 @@ rule paf_accuracy:
         truth="datasets/{dataset}/{genome}-{read_length}/truth.bam",
         paf="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.gz"
     wildcard_constraints:
-        sim=r"(?!sim1clr|sim1ont).*"
+        dataset=r"(?!sim1clr|sim1ont|sim1hifi).*"
     params:
         only_r1=lambda w: " --only-r1" if w.ends == "se" else ""
     shell:
-        "python -m saeval.get_accuracy{params.only_r1} --truth {input.truth} --predicted_paf {input.paf} --outfile {output.txt}.tmp --output-falsehq > {output.txt}.tmp"
+        "python -m saeval.get_accuracy{params.only_r1} --truth {input.truth} --predicted_paf {input.paf} > {output.txt}.tmp"
         "\n mv -v {output.txt}.tmp {output.txt}"
 
 
 rule sim1_accuracy:
     output:
-        txt="runs/{program}/{dataset,sim1(ont|clr)}-{genome}-{read_length}/{ends}.paf.accuracy.txt"
+        txt="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.accuracy.txt"
     input:
-        truth="datasets/{dataset,sim1(ont|clr)}/{genome}-{read_length}/1.fastq.gz",
-        paf="runs/{program}/{dataset,sim1(ont|clr)}-{genome}-{read_length}/{ends}.paf.gz"
+        truth="datasets/{dataset}/{genome}-{read_length}/truth.maf",
+        faidx="genomes/{genome}.fa.fai",
+        paf="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.gz",
+        fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz"
     wildcard_constraints:
-        sim=r"(sim1clr|sim1ont).*"
+        dataset=r"sim1(clr|ont|hifi).*"
     params:
-        only_r1=lambda w: " --only-r1" if w.ends == "se" else ""
+        only_r1=lambda w: " --only-r1" if w.ends == "se" else "",
+        ccs=lambda w: f" --ccs --fastq datasets/{w.dataset}/{w.genome}-{w.read_length}/1.fastq.gz" if w.dataset == "sim1hifi" else ""
     shell:
-        "python -m saeval.get_accuracy{params.only_r1} --truth {input.truth} --predicted_paf {input.paf} --outfile {output.txt}.tmp --output-falsehq > {output.txt}.tmp"
+        "python -m saeval.get_accuracy{params.only_r1} --truth {input.truth} --faidx {input.faidx} {params.ccs} --predicted_paf {input.paf} > {output.txt}.tmp"
         "\n mv -v {output.txt}.tmp {output.txt}"
 
 
