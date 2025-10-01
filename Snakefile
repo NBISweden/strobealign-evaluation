@@ -42,8 +42,7 @@ VARIATION_SETTINGS = {
     "sim6": "--snp-rate 0.05 --small-indel-rate 0.002 --max-small-indel-size 100",
 }
 SIM = ["sim0"] + list(VARIATION_SETTINGS)
-SIM = ["sim3", "sim1illumina"]
-LONG_SIM = ["sim1clr","sim1ont","sim1hifi"]
+LONG_SIM = ["sim1clr","sim1ont","sim1hifi","sim1illumina"]
 # LONG_SIM = ["sim1hifi"]
 
 
@@ -207,7 +206,7 @@ rule mason_simulator:
         vcf="variants/{sim}-{genome}.vcf",
         mason_simulator="bin/mason_simulator"
     wildcard_constraints:
-        sim=r"(?!sim1clr|sim1ont|sim0).*"
+        sim=r"(?!sim1clr|sim1ont|sim1hifi|sim0).*"
     params:
         extra=mason_simulator_parameters,
         n_reads=lambda wildcards: N_READS[int(wildcards.read_length)],
@@ -239,7 +238,7 @@ rule mason_simulator_long:
         vcf="variants/{sim}-{genome}.vcf",
         mason_simulator="bin/mason_simulator"
     wildcard_constraints:
-        sim=r"(?!sim1clr|sim1ont|sim0).*"
+        sim=r"(?!sim1clr|sim1ont|sim1hifi|sim0).*"
     params:
         n_reads=lambda wildcards: N_READS[int(wildcards.long_read_length)],
         fragment_length=lambda wildcards: int(int(wildcards.long_read_length) * 1.5),
@@ -311,8 +310,6 @@ def pbsim_parameters(wildcards):
                 ref_len += len(line.strip())    
     # print("Reference lingth: {}".format(ref_len))
     num_reads = N_READS[mean_read_length]
-    if wildcards.sim == "sim1hifi":
-        num_reads /= 50
     depth = float(num_reads * mean_read_length) / float(ref_len)
     result += " --depth {}".format(depth)
     if wildcards.sim == "sim1hifi":
@@ -422,7 +419,7 @@ rule ccs:
     log:
         "datasets/sim1hifi/{genome}-{long_read_length}/ccs.log"
     threads:
-        60
+        32
     shell:
         """
         ccs --log-file {log} -j {threads} {input.bam} {output.fastq} 
