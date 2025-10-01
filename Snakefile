@@ -25,9 +25,22 @@ LONG_READ_LENGTHS = tuple(n for n in N_READS if n >= 1000)  # single-end only
 READ_LENGTHS = tuple(n for n in N_READS if n < 1000)
 MODELS = {"sim1clr": "data/pbsim3/QSHMM-RSII.model", "sim1ont": "data/pbsim3/QSHMM-ONT-HQ.model", "sim1hifi": "data/pbsim3/QSHMM-RSII.model"}
 
-GENOMES = ("ecoli", "fruitfly")
-LONG_READ_LENGTHS = (1000, 5000)
-READ_LENGTHS = (200)
+# Test section
+# GENOMES = ("ecoli")
+# LONG_READ_LENGTHS = (1000, 5000, 10000)
+# READ_LENGTHS = (200)
+# N_READS = {
+#     50: 10_000,
+#     75: 10_000,
+#     100: 10_000,
+#     150: 10_000,
+#     200: 10_000,
+#     300: 10_000,
+#     500: 10_000,
+#     1000: 5_000,
+#     5000: 1_000,
+#     10000: 500,
+# }
 
 DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=READ_LENGTHS)
 ILLUMINA_LONG_DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=LONG_READ_LENGTHS)
@@ -41,9 +54,9 @@ VARIATION_SETTINGS = {
     "sim5": "--snp-rate 0.005 --small-indel-rate 0.001 --max-small-indel-size 100",
     "sim6": "--snp-rate 0.05 --small-indel-rate 0.002 --max-small-indel-size 100",
 }
-SIM = ["sim0"] + list(VARIATION_SETTINGS)
-LONG_SIM = ["sim1clr","sim1ont","sim1hifi","sim1illumina"]
-# LONG_SIM = ["sim1hifi"]
+# SIM = ["sim0"] + list(VARIATION_SETTINGS)
+SIM = ["sim1illumina"]
+LONG_SIM = ["sim1clr","sim1ont","sim1hifi"]
 
 
 wildcard_constraints:
@@ -61,7 +74,7 @@ rule:
         expand("datasets/{sim}/{ds}/{r}.fastq.gz", sim=SIM, ds=DATASETS, r=(1, 2)),
         expand("datasets/{sim}/{ds}/truth.bam", sim=SIM, ds=DATASETS + LONG_DATASETS),
         expand("datasets/{sim}/{ds}/1.fastq.gz", sim=SIM + LONG_SIM, ds=LONG_DATASETS),
-        expand("datasets/{sim}/{ds}/truth.maf", sim=LONG_SIM, ds=LONG_DATASETS)
+        expand("datasets/{sim}/{ds}/truth.maf.gz", sim=LONG_SIM, ds=LONG_DATASETS)
 
 # Download genomes
 
@@ -328,7 +341,7 @@ def first_bam_name(wildcards):
 
 rule pbsim:
     output:
-        maf="datasets/{sim,sim1(clr|ont)}/{genome}-{long_read_length}/truth.maf",
+        maf="datasets/{sim,sim1(clr|ont)}/{genome}-{long_read_length}/truth.maf.gz",
         fastq="datasets/{sim,sim1(clr|ont)}/{genome}-{long_read_length}/1.fastq.gz"
     input:
         fasta="genomes/{genome}.fa",
@@ -349,8 +362,7 @@ rule pbsim:
         " {params.extra}"
         " --length-sd 0"
         "\ncat {params.outprefix}_*.fq.gz > {output.fastq}"
-        "\ncat {params.outprefix}_*.maf.gz > {output.maf}.gz"
-        "\npigz -d {output.maf}.gz"
+        "\ncat {params.outprefix}_*.maf.gz > {output.maf}"
         "\nrm {params.outprefix}_*.ref"
         "\nrm {params.outprefix}_*.maf.gz"
         "\nrm {params.outprefix}_*.fq.gz"
@@ -358,7 +370,7 @@ rule pbsim:
 
 rule pbsim_hifi:
     output:
-        maf="datasets/{sim,sim1(hifi)}/{genome}-{long_read_length}/truth.maf",
+        maf="datasets/{sim,sim1(hifi)}/{genome}-{long_read_length}/truth.maf.gz",
         bam=temp("datasets/{sim,sim1hifi}/{genome}-{long_read_length}/1.bam")
     input:
         fasta="genomes/{genome}.fa",
@@ -378,8 +390,7 @@ rule pbsim_hifi:
         " --id-prefix {params.outid}"
         " {params.extra}"
         " --length-sd 0"
-        "\ncat {params.outprefix}_*.maf.gz > {output.maf}.gz"
-        "\npigz -d {output.maf}.gz"
+        "\ncat {params.outprefix}_*.maf.gz > {output.maf}"
         "\nrm {params.outprefix}_*.ref"
         "\nrm {params.outprefix}_*.maf.gz"
         "\nsamtools merge -o {output.bam} {params.outprefix}_*.bam"

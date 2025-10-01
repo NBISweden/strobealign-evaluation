@@ -157,7 +157,7 @@ def read_maf(maf_path: Path, ref_index_path: Path, fastq_path: Path, ccs_names: 
         with FastxFile(fastq_path) as fastq_file:
             consensus_names = {read.name for read in fastq_file}
 
-    with open(maf_path) as maf_file:
+    with xopen(maf_path) as maf_file:
         alignments = AlignIO.parse(maf_file, "maf")
 
         for alignment in alignments:

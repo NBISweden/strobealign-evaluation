@@ -386,7 +386,7 @@ rule sim1_accuracy:
     output:
         txt="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.accuracy.txt"
     input:
-        truth="datasets/{dataset}/{genome}-{read_length}/truth.maf",
+        truth="datasets/{dataset}/{genome}-{read_length}/truth.maf.gz",
         faidx="genomes/{genome}.fa.fai",
         paf="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.gz",
         fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz"
