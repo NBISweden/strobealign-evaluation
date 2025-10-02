@@ -18,3 +18,4 @@ dependencies:
   - isa-l
   - pyyaml
   - pyfaidx
+  - biopython

@@ -122,7 +122,7 @@ rule uncompress_chm13:
         "zcat {input} > {output}"
 
 rule filter_rye:
-    output: "genomes/rye.fa"
+    output: temp("genomes/rye_raw.fa")
     input: rules.download_rye.output
     shell:
         """
@@ -135,6 +135,44 @@ rule filter_rye:
 
         rm {output}.tmp.fa {output}.tmp.fa.fai {output}.tmp.regions.txt
         """
+
+rule chunk_rye:
+    input:
+        ref="genomes/rye_raw.fa"
+    output:
+        chunked="genomes/rye.fa"
+    params:
+        max_chunk_size=1_000_000_000
+    run:
+        from Bio import SeqIO
+        from Bio.Seq import Seq
+        from Bio.SeqRecord import SeqRecord
+
+        with open(output.chunked, 'w') as out_handle:
+            for record in SeqIO.parse(input.ref, "fasta"):
+                seq_len = len(record.seq)
+
+                if seq_len <= params.max_chunk_size:
+                    SeqIO.write(record, out_handle, "fasta")
+                else:
+                    num_chunks = (seq_len + params.max_chunk_size - 1) // params.max_chunk_size
+
+                    for i in range(num_chunks):
+                        start = i * params.max_chunk_size
+                        end = min((i + 1) * params.max_chunk_size, seq_len)
+
+                        chunk_seq = record.seq[start:end]
+                        chunk_id = f"{record.id}_chunk{i+1}of{num_chunks}"
+                        chunk_desc = f"{record.description} | chunk {i+1}/{num_chunks} | pos {start+1}-{end}"
+
+                        chunk_record = SeqRecord(
+                            chunk_seq,
+                            id=chunk_id,
+                            description=chunk_desc
+                        )
+
+                        SeqIO.write(chunk_record, out_handle, "fasta")
+
 
 rule extract_chry:
     output: "genomes/chrY.fa"
