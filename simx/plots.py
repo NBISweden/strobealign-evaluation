@@ -220,7 +220,7 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--config", "-c", help="YAML configuration")
-    parser.add_argument("--linewidth", type=int, default=3)
+    parser.add_argument("--linewidth", type=int, default=2)
     parser.add_argument("--genome", action="store_true", help="Create genome-specific plots (with both single-end and paired-end measurements)")
     parser.add_argument("csv", help="Results file")
     parser.add_argument("outfolder", help="output folder")
