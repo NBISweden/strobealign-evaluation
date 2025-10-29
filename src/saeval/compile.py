@@ -8,7 +8,7 @@ from tempfile import TemporaryDirectory
 import shutil
 import subprocess
 
-DEFAULT_REMOTE = "https://github.com/ksahlin/strobealign.git"
+DEFAULT_REPOSITORY = "https://github.com/ksahlin/strobealign.git"
 
 
 def runc(*args, **kwargs):
@@ -17,15 +17,15 @@ def runc(*args, **kwargs):
 
 
 
-def compile_strobealign_if_missing(commit_hash, binary=None, remotes=None):
+def compile_strobealign_if_missing(commit_hash, binary=None, repository=None):
     """
     Compile the given strobealign commit and store the binary at
     *binary* (which must be a path). If *binary* is None, write to
     bin/strobealign-{short_commit_hash}. If the target binary already exists,
     do not compile.
     """
-    if remotes is None:
-        remotes = [DEFAULT_REMOTE]
+    if repository is None:
+        repository = DEFAULT_REPOSITORY
     if binary is None:
         #short_commit_hash = make_short_hash(commit_hash)
         bindir = Path("bin")
@@ -36,16 +36,7 @@ def compile_strobealign_if_missing(commit_hash, binary=None, remotes=None):
         return binary, False
 
     success = False
-    for remote in remotes:
-        try:
-            compile_strobealign(commit_hash, binary=binary, remote=remote)
-        except CouldNotCheckout:
-            continue
-        success = True
-        break
-
-    if not success:
-        raise CouldNotCheckout()
+    compile_strobealign(commit_hash, binary=binary, repository=repository)
 
     return binary, True
 
@@ -54,9 +45,9 @@ class CouldNotCheckout(Exception):
     pass
 
 
-def compile_strobealign(commit_hash, binary, remote=DEFAULT_REMOTE):
+def compile_strobealign(commit_hash, binary, repository=DEFAULT_REPOSITORY):
     with TemporaryDirectory() as compiledir:
-        runc(["git", "clone", remote, compiledir])
+        runc(["git", "clone", repository, compiledir])
         if subprocess.run(["git", "checkout", "--detach", commit_hash], cwd=compiledir).returncode != 0:
             raise CouldNotCheckout()
 
@@ -102,14 +93,11 @@ def main():
 
     parser = ArgumentParser()
     parser.add_argument("-o", "--output", type=Path, help="Output file name")
-    parser.add_argument("-r", "--remote", action="append", help=f"Git remote to clone. Multiple can be given; they are tried in order. Default: {DEFAULT_REMOTE}")
+    parser.add_argument("-r", "--repository", default=DEFAULT_REPOSITORY, help="Git repository from which to clone. Default: %(default)s")
     parser.add_argument("hash", help="Commit hash")
 
     args = parser.parse_args()
-    if args.remote is None:
-        args.remote = [DEFAULT_REMOTE]
-
-    binary, was_built = compile_strobealign_if_missing(args.hash, args.output, remotes=args.remote)
+    binary, was_built = compile_strobealign_if_missing(args.hash, args.output, repository=args.repository)
 
 
 if __name__ == "__main__":
