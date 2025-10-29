@@ -262,17 +262,7 @@ rule compile_strobealign:
     output: "bin/strobealign/{commit}"
     threads: 99
     shell:
-        """
-        wget https://github.com/ksahlin/strobealign/archive/{wildcards.commit}.zip
-        unzip -d strobealign-{wildcards.commit} {wildcards.commit}.zip
-        rm {wildcards.commit}.zip
-        cd strobealign-{wildcards.commit}/*
-        cmake -B build -DCMAKE_C_FLAGS="-march=native" -DCMAKE_CXX_FLAGS="-march=native"
-        make -j {threads} -C build strobealign
-        mv build/strobealign ../../{output}
-        cd ../..
-        rm -rf strobealign-{wildcards.commit}
-        """
+        "python -m saeval.compile -o {output} {wildcards.commit}"
 
 rule compile_strobealign_rs:
     output: "bin/strobealign-rs/{commit}"
