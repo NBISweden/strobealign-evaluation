@@ -1,4 +1,8 @@
 # Example evaluation configuration with most datasets and libraries enabled
+
+# Uncomment and change to use commits from a different repository
+# repository: "https://github.com/ksahlin/strobealign.git"
+
 mode:
   - map
   - align

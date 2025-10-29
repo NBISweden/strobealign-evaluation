@@ -261,8 +261,9 @@ rule xmapper_paired_end:
 rule compile_strobealign:
     output: "bin/strobealign/{commit}"
     threads: 99
+    params: repo=f" -r {config['repository']}" if config.get("repository") else ""
     shell:
-        "python -m saeval.compile -o {output} {wildcards.commit}"
+        "python -m saeval.compile{params.repo} -o {output} {wildcards.commit}"
 
 rule compile_strobealign_rs:
     output: "bin/strobealign-rs/{commit}"
