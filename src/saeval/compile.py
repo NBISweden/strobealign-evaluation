@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Compile a given commit of strobealign and store the binary in bin/
+Compile a given commit of strobealign and store the binary in bin/ (or where
+specified with -o)
 """
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -22,16 +23,13 @@ def compile_strobealign_if_missing(commit_hash, binary=None):
     do not compile.
     """
     if binary is None:
-        short_commit_hash = make_short_hash(commit_hash)
+        #short_commit_hash = make_short_hash(commit_hash)
         bindir = Path("bin")
-        binary = bindir / f"strobealign-{short_commit_hash}"
-    else:
-        bindir = None
+        bindir.mkdir(exist_ok=True)
+        binary = bindir / f"strobealign-{commit_hash}"
 
     if binary.exists():
         return binary, False
-
-    bindir.mkdir(exist_ok=True)
 
     compile_strobealign(commit_hash, binary=binary)
     return binary, True
@@ -68,7 +66,7 @@ def compile_strobealign(commit_hash, binary):
         shutil.move(Path(compiledir) / "build" / "strobealign", binary)
 
 
-def make_short_hash(rev):
+def _currently_unused_make_short_hash(rev):
     result = runc(
         ["git", "rev-parse", "--short", f"{rev}^0"],
         cwd="strobealign",
@@ -83,9 +81,11 @@ def main():
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
+    parser.add_argument("-o", "--output", type=Path, help="Output file name")
     parser.add_argument("hash", help="Commit hash")
+
     args = parser.parse_args()
-    binary, was_built = compile_strobealign_if_missing(args.hash)
+    binary, was_built = compile_strobealign_if_missing(args.hash, args.output)
 
 
 if __name__ == "__main__":
