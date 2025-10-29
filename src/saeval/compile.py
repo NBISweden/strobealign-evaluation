@@ -8,6 +8,8 @@ from tempfile import TemporaryDirectory
 import shutil
 import subprocess
 
+DEFAULT_REMOTE = "https://github.com/ksahlin/strobealign.git"
+
 
 def runc(*args, **kwargs):
     kwargs["check"] = True
@@ -15,13 +17,15 @@ def runc(*args, **kwargs):
 
 
 
-def compile_strobealign_if_missing(commit_hash, binary=None):
+def compile_strobealign_if_missing(commit_hash, binary=None, remotes=None):
     """
     Compile the given strobealign commit and store the binary at
     *binary* (which must be a path). If *binary* is None, write to
     bin/strobealign-{short_commit_hash}. If the target binary already exists,
     do not compile.
     """
+    if remotes is None:
+        remotes = [DEFAULT_REMOTE]
     if binary is None:
         #short_commit_hash = make_short_hash(commit_hash)
         bindir = Path("bin")
@@ -31,14 +35,30 @@ def compile_strobealign_if_missing(commit_hash, binary=None):
     if binary.exists():
         return binary, False
 
-    compile_strobealign(commit_hash, binary=binary)
+    success = False
+    for remote in remotes:
+        try:
+            compile_strobealign(commit_hash, binary=binary, remote=remote)
+        except CouldNotCheckout:
+            continue
+        success = True
+        break
+
+    if not success:
+        raise CouldNotCheckout()
+
     return binary, True
 
 
-def compile_strobealign(commit_hash, binary):
+class CouldNotCheckout(Exception):
+    pass
+
+
+def compile_strobealign(commit_hash, binary, remote=DEFAULT_REMOTE):
     with TemporaryDirectory() as compiledir:
-        runc(["git", "clone", "strobealign", compiledir])
-        runc(["git", "checkout", "--detach", commit_hash], cwd=compiledir)
+        runc(["git", "clone", remote, compiledir])
+        if subprocess.run(["git", "checkout", "--detach", commit_hash], cwd=compiledir).returncode != 0:
+            raise CouldNotCheckout()
 
         runc(
             [
@@ -82,10 +102,14 @@ def main():
 
     parser = ArgumentParser()
     parser.add_argument("-o", "--output", type=Path, help="Output file name")
+    parser.add_argument("-r", "--remote", action="append", help=f"Git remote to clone. Multiple can be given; they are tried in order. Default: {DEFAULT_REMOTE}")
     parser.add_argument("hash", help="Commit hash")
 
     args = parser.parse_args()
-    binary, was_built = compile_strobealign_if_missing(args.hash, args.output)
+    if args.remote is None:
+        args.remote = [DEFAULT_REMOTE]
+
+    binary, was_built = compile_strobealign_if_missing(args.hash, args.output, remotes=args.remote)
 
 
 if __name__ == "__main__":
