@@ -4,6 +4,7 @@ Compile a given commit of strobealign and store the binary in bin/
 """
 from pathlib import Path
 from tempfile import TemporaryDirectory
+import shutil
 import subprocess
 
 
@@ -12,19 +13,34 @@ def runc(*args, **kwargs):
     return subprocess.run(*args, **kwargs)
 
 
-def compile_strobealign(commit_hash):
-    short_commit_hash = make_short_hash(commit_hash)
 
-    bindir = Path("bin")
-    binary = bindir / f"strobealign-{short_commit_hash}"
+def compile_strobealign_if_missing(commit_hash, binary=None):
+    """
+    Compile the given strobealign commit and store the binary at
+    *binary* (which must be a path). If *binary* is None, write to
+    bin/strobealign-{short_commit_hash}. If the target binary already exists,
+    do not compile.
+    """
+    if binary is None:
+        short_commit_hash = make_short_hash(commit_hash)
+        bindir = Path("bin")
+        binary = bindir / f"strobealign-{short_commit_hash}"
+    else:
+        bindir = None
 
     if binary.exists():
         return binary, False
 
-    Path("builds").mkdir(exist_ok=True)
-    with TemporaryDirectory(dir="builds") as compiledir:
+    bindir.mkdir(exist_ok=True)
+
+    compile_strobealign(commit_hash, binary=binary)
+    return binary, True
+
+
+def compile_strobealign(commit_hash, binary):
+    with TemporaryDirectory() as compiledir:
         runc(["git", "clone", "strobealign", compiledir])
-        runc(["git", "checkout", "--detach", short_commit_hash], cwd=compiledir)
+        runc(["git", "checkout", "--detach", commit_hash], cwd=compiledir)
 
         runc(
             [
@@ -49,10 +65,7 @@ def compile_strobealign(commit_hash):
                 "strobealign",
             ]
         )
-
-        bindir.mkdir(exist_ok=True)
-        (Path(compiledir) / "build" / "strobealign").rename(binary)
-    return binary, True
+        shutil.move(Path(compiledir) / "build" / "strobealign", binary)
 
 
 def make_short_hash(rev):
@@ -72,7 +85,7 @@ def main():
     parser = ArgumentParser()
     parser.add_argument("hash", help="Commit hash")
     args = parser.parse_args()
-    binary, was_built = compile_strobealign(args.hash)
+    binary, was_built = compile_strobealign_if_missing(args.hash)
 
 
 if __name__ == "__main__":
