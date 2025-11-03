@@ -55,8 +55,8 @@ VARIATION_SETTINGS = {
     "sim6": "--snp-rate 0.05 --small-indel-rate 0.002 --max-small-indel-size 100",
 }
 # SIM = ["sim0"] + list(VARIATION_SETTINGS)
-SIM = ["sim1illumina"]
-LONG_SIM = ["sim1clr","sim1ont","sim1hifi"]
+SIM = []
+LONG_SIM = ["sim1ont","sim1hifi"]
 
 
 wildcard_constraints:
