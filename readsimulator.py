@@ -26,20 +26,27 @@ def mutate(s, error_rate):
     n = len(s)
     k = int(n * error_rate)
     positions = sorted(random.sample(range(len(s)), k=k))
-    m = ""
+    mutated = ""
     prev = 0
+    md = ""
     for pos in positions:
-        m += s[prev:pos]
-        m += random.choice(NEG[s[pos]])
+        mutated += s[prev:pos]
+        if pos - prev > 0:
+            md += str(pos - prev)
+        mutated_base = random.choice(NEG[s[pos]])
+        mutated += mutated_base
+        md += mutated_base
         prev = pos + 1
-    m += s[prev:]
+    mutated += s[prev:]
+    if len(s) - prev > 0:
+        md += str(len(s) - prev)
 
-    assert len(s) == len(m)
+    assert len(s) == len(mutated)
 
-    return m, k
+    return mutated, md, k
 
 
-def output_sam_records(name, seq1, seq2, contig, pos1, pos2, n_mismatches1, n_mismatches2):
+def output_sam_records(name, seq1, seq2, contig, pos1, pos2, n_mismatches1, n_mismatches2, md1, md2):
     insert_size = pos2 - pos1 + len(seq2)
     print(
         name,
@@ -54,7 +61,7 @@ def output_sam_records(name, seq1, seq2, contig, pos1, pos2, n_mismatches1, n_mi
         seq1,
         "H" * len(seq1),  # qual
         f"NM:i:{n_mismatches1}",
-        #f"MD:Z:{len(seq1)}",
+        f"MD:Z:{md1}",
         sep="\t",
     )
     print(
@@ -70,12 +77,12 @@ def output_sam_records(name, seq1, seq2, contig, pos1, pos2, n_mismatches1, n_mi
         seq2,
         "H" * len(seq2),  # qual
         f"NM:i:{n_mismatches2}",
-        #f"MD:Z:{len(seq2)}",
+        f"MD:Z:{md2}",
         sep="\t",
     )
 
 
-def output_sam_record(name, seq, contig, pos, n_mismatches):
+def output_sam_record(name, seq, contig, pos, n_mismatches, md):
     print(
         name,
         0,
@@ -89,7 +96,7 @@ def output_sam_record(name, seq, contig, pos, n_mismatches):
         seq,
         "H" * len(seq),  # qual
         f"NM:i:{n_mismatches}",
-        #f"MD:Z:{len(seq)}",
+        f"MD:Z:{md}",
         sep="\t",
     )
 
@@ -113,11 +120,12 @@ def simulate_paired_end_reads(fasta, n, read_length, error_rate, mean_insert_siz
             if seq1.count("N") >= read_length / 10 or seq2.count("N") >= read_length / 10:
                 continue
             if error_rate > 0:
-                seq1, n_mismatches1 = mutate(seq1, error_rate)
-                seq2, n_mismatches2 = mutate(seq2, error_rate)
+                seq1, md1, n_mismatches1 = mutate(seq1, error_rate)
+                seq2, md2, n_mismatches2 = mutate(seq2, error_rate)
             else:
                 n_mismatches1 = n_mismatches2 = 0
-            output_sam_records(name, seq1, seq2, contig, pos1, pos2, n_mismatches1, n_mismatches2)
+                md1 = md2 = str(read_length)
+            output_sam_records(name, seq1, seq2, contig, pos1, pos2, n_mismatches1, n_mismatches2, md1, md2)
             i += 1
             if i == n:
                 break
@@ -138,10 +146,12 @@ def simulate_single_end_reads(fasta, n, read_length, error_rate):
             if seq.count("N") >= read_length / 10:
                 continue
             if error_rate > 0:
-                seq, n_mismatches = mutate(seq, error_rate)
+                seq, md, n_mismatches = mutate(seq, error_rate)
             else:
                 n_mismatches = 0
-            output_sam_record(name, seq, contig, pos, n_mismatches)
+                assert len(seq) == read_length
+                md = str(read_length)
+            output_sam_record(name, seq, contig, pos, n_mismatches, md)
             i += 1
             if i == n:
                 break
