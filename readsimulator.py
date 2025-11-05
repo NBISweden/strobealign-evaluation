@@ -112,7 +112,7 @@ def simulate_paired_end_reads(fasta, n, read_length, error_rate, mean_insert_siz
             fragment_size = int(fragment_size)
             name = f"simulated.{i+1}"
             contig_length = len(fasta[contig])
-            pos1 = random.randint(0, contig_length - fragment_size + 1)
+            pos1 = random.randint(0, contig_length - fragment_size)
             pos2 = pos1 + fragment_size - read_length
             assert pos2 >= 0
             seq1 = fasta[contig][pos1:pos1+read_length].seq.upper()
@@ -124,6 +124,7 @@ def simulate_paired_end_reads(fasta, n, read_length, error_rate, mean_insert_siz
                 seq2, md2, n_mismatches2 = mutate(seq2, error_rate)
             else:
                 n_mismatches1 = n_mismatches2 = 0
+                assert len(seq1) == len(seq2) == read_length
                 md1 = md2 = str(read_length)
             output_sam_records(name, seq1, seq2, contig, pos1, pos2, n_mismatches1, n_mismatches2, md1, md2)
             i += 1
