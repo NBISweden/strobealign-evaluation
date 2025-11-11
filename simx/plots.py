@@ -17,8 +17,10 @@ import argparse
 import random
 from pathlib import Path
 from typing import Optional
+from contextlib import ExitStack
 
 import matplotlib
+from matplotlib.backends.backend_pdf import PdfPages
 
 matplotlib.use("PDF")
 
@@ -31,11 +33,11 @@ import yaml
 MEASUREMENT_TYPES =  [
     # column name, label, logscale
     ("accuracy", "Accuracy (%)", False),
-    ("jaccuracy", "Jaccard accuracy (%)", False),
+    ("time", "Time (µs/read)", True),
 #    ("saccuracy", "Score-based accuracy (%)", False),
     ("aligned", "Percentage aligned", False),
-    ("time", "Time (µs/read)", True),
     ("memory", "Memory usage (GB)", False),
+    ("jaccuracy", "Jaccard accuracy (%)", False),
 ]
 
 
@@ -156,24 +158,31 @@ def configure(config_path):
 
 
 def plot_ends(df, outfolder, palette, read_lengths, tools, modes, linewidth):
-    for ends, table in df.groupby("ends"):
-        title = "Single-end reads" if ends == "se" else "Paired-end reads"
-        for y, label, logscale in MEASUREMENT_TYPES:
-            fig = plot(
-                table,
-                palette,
-                tools,
-                modes,
-                read_lengths,
-                y=y,
-                logscale=logscale,
-                row="genome",
-                label=label,
-                title=title,
-                linewidth=linewidth,
-            )
-            if outfolder is not None:
-                fig.savefig(outfolder / f"ends-{ends}-{y}.pdf")
+    with ExitStack() as stack:
+        if outfolder is not None:
+            pdf = stack.enter_context(PdfPages(outfolder / "ends.pdf"))
+        else:
+            pdf = None
+        for ends, table in df.groupby("ends"):
+            title = "Single-end reads" if ends == "se" else "Paired-end reads"
+            for y, label, logscale in MEASUREMENT_TYPES:
+                fig = plot(
+                    table,
+                    palette,
+                    tools,
+                    modes,
+                    read_lengths,
+                    y=y,
+                    logscale=logscale,
+                    row="genome",
+                    label=label,
+                    title=title,
+                    linewidth=linewidth,
+                )
+                if pdf is not None:
+                    pdf.savefig()
+                if outfolder is not None:
+                    fig.savefig(outfolder / f"ends-{ends}-{y}.pdf")
 
 
 def plot_genomes(df, outfolder, palette, read_lengths, tools, modes, linewidth):
