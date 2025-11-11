@@ -37,7 +37,7 @@ MEASUREMENT_TYPES =  [
 #    ("saccuracy", "Score-based accuracy (%)", False),
     ("aligned", "Percentage aligned", False),
     ("memory", "Memory usage (GB)", False),
-    ("jaccuracy", "Jaccard accuracy (%)", False),
+#    ("jaccuracy", "Jaccard accuracy (%)", False),
 ]
 
 
