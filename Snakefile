@@ -21,26 +21,13 @@ N_READS = {
     5000: 100_000,
     10000: 50_000,
 }
+Test section
+GENOMES = ("ecoli", "fruitfly")
+N_READS = {len: num / 100 for len, num in N_READS}
+
 LONG_READ_LENGTHS = tuple(n for n in N_READS if n >= 1000)  # single-end only
 READ_LENGTHS = tuple(n for n in N_READS if n < 1000)
-MODELS = {"sim1clr": "data/pbsim3/QSHMM-RSII.model", "sim1ont": "data/pbsim3/QSHMM-ONT-HQ.model", "sim1hifi": "data/pbsim3/QSHMM-RSII.model"}
-
-# Test section
-# GENOMES = ("ecoli")
-# LONG_READ_LENGTHS = (1000, 5000, 10000)
-# READ_LENGTHS = (200)
-# N_READS = {
-#     50: 10_000,
-#     75: 10_000,
-#     100: 10_000,
-#     150: 10_000,
-#     200: 10_000,
-#     300: 10_000,
-#     500: 10_000,
-#     1000: 5_000,
-#     5000: 1_000,
-#     10000: 500,
-# }
+MODELS = {"clr": "data/pbsim3/QSHMM-RSII.model", "ont": "data/pbsim3/QSHMM-ONT-HQ.model", "hifi": "data/pbsim3/QSHMM-RSII.model"}
 
 DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=READ_LENGTHS)
 ILLUMINA_LONG_DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=LONG_READ_LENGTHS)
@@ -54,9 +41,9 @@ VARIATION_SETTINGS = {
     "sim5": "--snp-rate 0.005 --small-indel-rate 0.001 --max-small-indel-size 100",
     "sim6": "--snp-rate 0.05 --small-indel-rate 0.002 --max-small-indel-size 100",
 }
-# SIM = ["sim0"] + list(VARIATION_SETTINGS)
-SIM = []
-LONG_SIM = ["sim1ont","sim1hifi"]
+# SIM = ["sim0", "sim1"] + list(VARIATION_SETTINGS)
+SIM = ["sim0", "sim1", "sim3", "SIM1"]
+LONG_SIM = ["ont", "hifi", "clr"]
 
 
 wildcard_constraints:
@@ -187,7 +174,7 @@ rule mason_variator:
         mason_variator="bin/mason_variator",
         mason_materializer="bin/mason_materializer"
     wildcard_constraints:
-        sim=r"(?!sim1clr|sim1ont|sim1hifi|sim0).*"
+        sim=r"(?!clr|ont|hifi|sim0|sim1).*"
     params:
         variation_settings=lambda wildcards: VARIATION_SETTINGS[wildcards.sim]
     shell:
@@ -219,7 +206,7 @@ rule mason_simulator:
         vcf="variants/{sim}-{genome}.vcf",
         mason_simulator="bin/mason_simulator"
     wildcard_constraints:
-        sim=r"(?!sim1clr|sim1ont|sim1hifi|sim0).*"
+        sim=r"(?!clr|ont|hifi|sim0|sim1).*"
     params:
         extra=mason_simulator_parameters,
         n_reads=lambda wildcards: N_READS[int(wildcards.read_length)],
@@ -251,7 +238,7 @@ rule mason_simulator_long:
         vcf="variants/{sim}-{genome}.vcf",
         mason_simulator="bin/mason_simulator"
     wildcard_constraints:
-        sim=r"(?!sim1clr|sim1ont|sim1hifi|sim0).*"
+        sim=r"(?!clr|ont|hifi|sim0|sim1).*"
     params:
         n_reads=lambda wildcards: N_READS[int(wildcards.long_read_length)],
         fragment_length=lambda wildcards: int(int(wildcards.long_read_length) * 1.5),
@@ -325,7 +312,7 @@ def pbsim_parameters(wildcards):
     num_reads = N_READS[mean_read_length]
     depth = float(num_reads * mean_read_length) / float(ref_len)
     result += " --depth {}".format(depth)
-    if wildcards.sim == "sim1hifi":
+    if wildcards.sim == "hifi":
         result += " --pass-num 10"
     return result
 
@@ -334,15 +321,15 @@ def pbsim_outprefix(wildcards):
     return f"datasets/{wildcards.sim}/{wildcards.genome}-{wildcards.long_read_length}/tmp"
 
 def first_bam_name(wildcards):
-    if wildcards.sim == "sim1hifi":
+    if wildcards.sim == "hifi":
         return pbsim_outprefix(wildcards) + "_0001.bam"
     return []
 
 
 rule pbsim:
     output:
-        maf="datasets/{sim,sim1(clr|ont)}/{genome}-{long_read_length}/truth.maf.gz",
-        fastq="datasets/{sim,sim1(clr|ont)}/{genome}-{long_read_length}/1.fastq.gz"
+        maf="datasets/{sim,clr|ont}/{genome}-{long_read_length}/truth.maf.gz",
+        fastq="datasets/{sim,clr|ont}/{genome}-{long_read_length}/1.fastq.gz"
     input:
         fasta="genomes/{genome}.fa",
         model=lambda wildcards: MODELS[wildcards.sim]
@@ -370,8 +357,8 @@ rule pbsim:
 
 rule pbsim_hifi:
     output:
-        maf="datasets/{sim,sim1(hifi)}/{genome}-{long_read_length}/truth.maf.gz",
-        bam=temp("datasets/{sim,sim1hifi}/{genome}-{long_read_length}/1.bam")
+        maf="datasets/{sim,hifi}/{genome}-{long_read_length}/truth.maf.gz",
+        bam=temp("datasets/{sim,hifi}/{genome}-{long_read_length}/1.bam")
     input:
         fasta="genomes/{genome}.fa",
         model=lambda wildcards: MODELS[wildcards.sim]
@@ -379,7 +366,7 @@ rule pbsim_hifi:
         extra=pbsim_parameters,
         outprefix=pbsim_outprefix,
         outid="S"
-    log: "logs/pbsim3/{sim,sim1(hifi)}-{genome}-{long_read_length}.log"
+    log: "logs/pbsim3/{sim,hifi}-{genome}-{long_read_length}.log"
     shell:
         "pbsim"
         " --strategy wgs"
@@ -397,38 +384,13 @@ rule pbsim_hifi:
         "\nrm {params.outprefix}_*.bam"
 
 
-# Add ground truth to long read sim1 
-# rule sim1_truth:
-#     output:
-#         fastq="datasets/{sim,sim1(clr|ont)}/{genome}-{long_read_length}/1.fastq.gz"
-#     input: 
-#         maf="datasets/{sim,sim1(clr|ont)}/{genome}-{long_read_length}/truth.maf",
-#         fai="genomes/{genome}.fa.fai"
-#     shell:
-#         "paftools.js pbsim2fq {input.fai} {input.maf} | pigz > {output.fastq}"
-
-
-# rule merge_pbsim:
-#     output:
-#         temp("datasets/{sim,sim1hifi}/{genome}-{long_read_length}/1.bam")
-#     input:
-#         bam=first_bam_name
-#     params:
-#         bamprefix=pbsim_outprefix
-#     shell:
-#         """
-#         samtools merge -o {output} {params.bamprefix}*.bam
-#         rm {params.bamprefix}*.bam
-#         """ 
-
-
 rule ccs:
     output:
-        fastq="datasets/sim1hifi/{genome}-{long_read_length}/1.fastq.gz"
+        fastq="datasets/hifi/{genome}-{long_read_length}/1.fastq.gz"
     input:
-        bam="datasets/sim1hifi/{genome}-{long_read_length}/1.bam"
+        bam="datasets/hifi/{genome}-{long_read_length}/1.bam"
     log:
-        "datasets/sim1hifi/{genome}-{long_read_length}/ccs.log"
+        "datasets/hifi/{genome}-{long_read_length}/ccs.log"
     threads:
         32
     shell:

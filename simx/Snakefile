@@ -26,7 +26,7 @@ PLOTS = ("accuracy", "aligned", "time", "memory")
 # For reads shorter than this, the evaluation includes paired-end data
 LONG_READ_LENGTH = 1000
 LONG_READ_LENGTHS = tuple(n for n in READ_LENGTHS if n >= 1000)
-LONG_READ_DATASETS = ["sim1ont", "sim1clr", "sim1illumina", "sim1hifi"]
+LONG_READ_DATASETS = ["ont", "clr", "SIM1", "hifi"]
 
 import itertools
 
@@ -107,13 +107,13 @@ def minimap2_profile(wildcards):
     minimap2’s sr (short reads) profile is advantageous up to
     approximately read length 500
     """
-    if (int(wildcards.read_length) <= 500):
+    if int(wildcards.read_length) <= 500:
         return "sr"
-    if (wildcards.dataset == "sim1clr"):
+    if wildcards.dataset == "clr":
         return "map-pb"
-    if (wildcards.dataset == "sim1ont"):
+    if wildcards.dataset == "ont":
         return "map-ont"
-    if (wildcards.dataset == "sim1hifi"):
+    if wildcards.dataset == "hifi":
         return "map-hifi"
     return "lr:hq"
 
@@ -358,7 +358,7 @@ rule bam_accuracy:
         truth="datasets/{dataset}/{genome}-{read_length}/truth.bam",
         bam="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.bam",
     wildcard_constraints:
-        dataset=r"(?!sim1clr|sim1ont|sim1illumina|sim1hifi).*"
+        dataset=r"(?!clr|ont|hifi).*"
     params:
         only_r1=lambda w: " --only-r1" if w.ends == "se" else "",
         extra=lambda w: " --multiple-primary --synthesize-unmapped" if w.program == "xmapper" else ""
@@ -374,7 +374,7 @@ rule paf_accuracy:
         truth="datasets/{dataset}/{genome}-{read_length}/truth.bam",
         paf="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.gz"
     wildcard_constraints:
-        dataset=r"(?!sim1clr|sim1ont|sim1hifi).*"
+        dataset=r"(?!clr|ont|hifi).*"
     params:
         only_r1=lambda w: " --only-r1" if w.ends == "se" else ""
     shell:
@@ -391,10 +391,10 @@ rule sim1_accuracy:
         paf="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.gz",
         fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz"
     wildcard_constraints:
-        dataset=r"sim1(clr|ont|hifi).*"
+        dataset=r"(clr|ont|hifi).*"
     params:
         only_r1=lambda w: " --only-r1" if w.ends == "se" else "",
-        ccs=lambda w: f" --ccs --fastq datasets/{w.dataset}/{w.genome}-{w.read_length}/1.fastq.gz" if w.dataset == "sim1hifi" else ""
+        ccs=lambda w: f" --ccs --fastq datasets/{w.dataset}/{w.genome}-{w.read_length}/1.fastq.gz" if w.dataset == "hifi" else ""
     shell:
         "python -m saeval.get_accuracy{params.only_r1} --truth {input.truth} --faidx {input.faidx} {params.ccs} --predicted_paf {input.paf} > {output.txt}.tmp"
         "\n mv -v {output.txt}.tmp {output.txt}"
@@ -479,16 +479,15 @@ def csvs(wildcards):
                 continue
             files.append(f"csv/{prog}/{dataset}-{wildcards.genome}-{read_length}/{wildcards.ends}.bam.csv")
     if "map" in MODES:
-        if wildcards.ends == "se":
-               read_lengths = READ_LENGTHS
-               datasets = DATASETS
-        else:
-            read_lengths = [rl for rl in READ_LENGTHS if rl < LONG_READ_LENGTH]
-            datasets = [ds for ds in DATASETS if ds not in LONG_READ_DATASETS]
-        files += expand(
-            f"csv/{{prog}}/{{dataset}}-{wildcards.genome}-{{read_length}}/{wildcards.ends}.paf.csv",
-            prog=(prog for prog in PROGRAMS if prog not in {"bwamem", "xmapper"}), dataset=datasets, read_length=read_lengths
-        )
+        datasets_lengths = []
+        for dataset, read_length in itertools.product(DATASETS, READ_LENGTHS):
+            if read_length < LONG_READ_LENGTH and dataset in LONG_READ_DATASETS:
+                continue
+            if wildcards.ends == "pe":
+                if read_length >= LONG_READ_LENGTH or dataset in LONG_READ_DATASETS:
+                    continue
+            if prog not in {"bwamem", "xmapper"}:
+                files.append(f"csv/{prog}/{dataset}-{wildcards.genome}-{read_length}/{wildcards.ends}.paf.csv")
     return files
 
 

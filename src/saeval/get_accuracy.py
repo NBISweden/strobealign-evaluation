@@ -328,17 +328,13 @@ assert jaccard_overlap(0, 4, 1, 3) == 0.5
 assert jaccard_overlap(1, 3, 0, 4) == 0.5
 
 
-def get_stats(truth, predicted, output_falsehq, outfile) -> Accuracy:
+def get_stats(truth, predicted) -> Accuracy:
     nr_total = len(truth)
     unaligned = 0
     nr_aligned = 0
     overmapped = 0
     correct = 0
     correct_jaccard = 0.0
-    read_outfile = None
-    if output_falsehq:
-        read_outfile = outfile + ".false_hqreads"
-    # with open(read_outfile, "w") as read_out:
     for query_name in predicted:
         if not truth[query_name]:
             overmapped += 1
@@ -357,8 +353,6 @@ def get_stats(truth, predicted, output_falsehq, outfile) -> Accuracy:
                 predicted_interval.start, predicted_interval.end, true_interval.start, true_interval.end
             ):
                 correct += 1
-            # elif predicted_interval.quality_score >= 15 and output_falsehq: 
-            #     read_out.write("{}\t{}\t{}\t{}\n".format(query_name, true_interval.name, true_interval.start, true_interval.end))
             correct_jaccard += jaccard_overlap(
                 predicted_interval.start, predicted_interval.end, true_interval.start, true_interval.end
             )
@@ -539,7 +533,7 @@ def measure_accuracy(
         else:
             truth = read_alignments(truth, skip_r2)
         predicted, mapped_to_multiple_pos = read_paf(predicted)
-        result = get_stats(truth, predicted, output_falsehq, outfile)
+        result = get_stats(truth, predicted)
     else:
         with (
             AlignmentFile(truth) as truth,
@@ -567,8 +561,7 @@ if __name__ == "__main__":
     parser.add_argument("--recompute-score", default=False, action="store_true", help="Recompute score in *predicted* BAM. Default: Use score from AS tag")
     parser.add_argument("--multiple-primary", default=False, action="store_true", help="Allow multiple primary alignments (violates SAM specification) and pick one randomly")
     parser.add_argument("--synthesize-unmapped", default=False, action="store_true", help="If an alignment is missing from predicted, assume the read is unmapped")
-    parser.add_argument("--output-falsehq", default=False, action="store_true", help="Output inaccurate reads with QS=60 (paf only)")
-    parser.add_argument("--truth", type=Path, help="True SAM/BAM/ MAF (if using pbsim3 ground truth)")
+    parser.add_argument("--truth", type=Path, help="True SAM/BAM/MAF (if using pbsim3 ground truth)")
     parser.add_argument("--faidx", type=Path, help="faidx of the reference genome (needed for MAF ground truth)")
     parser.add_argument("--ccs", dest="ccs_names", action="store_true", help="Input reads are produced by ccs (needed for MAF ground truth)")
     parser.add_argument("--fastq", type=Path, help="Consensus HiFi reads (if --ccs and MAF ground truth)")
