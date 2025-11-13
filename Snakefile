@@ -21,9 +21,9 @@ N_READS = {
     5000: 100_000,
     10000: 50_000,
 }
-Test section
+# Test section
 GENOMES = ("ecoli", "fruitfly")
-N_READS = {len: num / 100 for len, num in N_READS}
+N_READS = {rl: num // 100 for rl, num in N_READS.items()}
 
 LONG_READ_LENGTHS = tuple(n for n in N_READS if n >= 1000)  # single-end only
 READ_LENGTHS = tuple(n for n in N_READS if n < 1000)
@@ -41,8 +41,8 @@ VARIATION_SETTINGS = {
     "sim5": "--snp-rate 0.005 --small-indel-rate 0.001 --max-small-indel-size 100",
     "sim6": "--snp-rate 0.05 --small-indel-rate 0.002 --max-small-indel-size 100",
 }
-# SIM = ["sim0", "sim1"] + list(VARIATION_SETTINGS)
-SIM = ["sim0", "sim1", "sim3", "SIM1"]
+# SIM = ["sim0", "sim10p"] + list(VARIATION_SETTINGS)
+SIM = ["sim0", "sim10p", "sim3", "sim1"]
 LONG_SIM = ["ont", "hifi", "clr"]
 
 
@@ -174,7 +174,7 @@ rule mason_variator:
         mason_variator="bin/mason_variator",
         mason_materializer="bin/mason_materializer"
     wildcard_constraints:
-        sim=r"(?!clr|ont|hifi|sim0|sim1).*"
+        sim=r"(?!clr|ont|hifi|sim0|sim10p).*"
     params:
         variation_settings=lambda wildcards: VARIATION_SETTINGS[wildcards.sim]
     shell:
@@ -206,7 +206,7 @@ rule mason_simulator:
         vcf="variants/{sim}-{genome}.vcf",
         mason_simulator="bin/mason_simulator"
     wildcard_constraints:
-        sim=r"(?!clr|ont|hifi|sim0|sim1).*"
+        sim=r"(?!clr|ont|hifi|sim0|sim10p).*"
     params:
         extra=mason_simulator_parameters,
         n_reads=lambda wildcards: N_READS[int(wildcards.read_length)],
@@ -238,7 +238,7 @@ rule mason_simulator_long:
         vcf="variants/{sim}-{genome}.vcf",
         mason_simulator="bin/mason_simulator"
     wildcard_constraints:
-        sim=r"(?!clr|ont|hifi|sim0|sim1).*"
+        sim=r"(?!clr|ont|hifi|sim0|sim10p).*"
     params:
         n_reads=lambda wildcards: N_READS[int(wildcards.long_read_length)],
         fragment_length=lambda wildcards: int(int(wildcards.long_read_length) * 1.5),

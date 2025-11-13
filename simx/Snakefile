@@ -164,9 +164,9 @@ rule minimap2_paired_end:
 
 rule minimap2_paf_single_end:
     output:
-        paf="runs/minimap2/{dataset}-{genome}-{read_length}/se.paf.gz"
+        paf=temp("runs/minimap2/{dataset}-{genome}-{read_length}/se.paf.gz")
     input:
-        # index=minimap2_index,
+        index=minimap2_index,
         genome="genomes/{genome}.fa",
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
     log:
@@ -334,7 +334,7 @@ rule strobealign_paf_paired_end:
 
 rule strobealign_paf_single_end:
     output:
-        paf="runs/strobealign-{program}/{dataset}-{genome}-{read_length}/se.paf.gz"
+        paf=temp("runs/strobealign-{program}/{dataset}-{genome}-{read_length}/se.paf.gz")
     input:
         binary=lambda wildcards: VERSIONS[wildcards.program]["binary"],
         fasta="genomes/{genome}.fa",
@@ -480,7 +480,7 @@ def csvs(wildcards):
             files.append(f"csv/{prog}/{dataset}-{wildcards.genome}-{read_length}/{wildcards.ends}.bam.csv")
     if "map" in MODES:
         datasets_lengths = []
-        for dataset, read_length in itertools.product(DATASETS, READ_LENGTHS):
+        for prog, dataset, read_length in itertools.product(PROGRAMS, DATASETS, READ_LENGTHS):
             if read_length < LONG_READ_LENGTH and dataset in LONG_READ_DATASETS:
                 continue
             if wildcards.ends == "pe":
