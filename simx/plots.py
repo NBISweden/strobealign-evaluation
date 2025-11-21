@@ -31,12 +31,12 @@ import yaml
 
 
 MEASUREMENT_TYPES =  [
-    # column name, label, logscale
-    ("accuracy", "Accuracy (%)", False),
-    ("time", "Time (µs/read)", True),
+    # column name, label, logscale, include in single PDF
+    ("accuracy", "Accuracy (%)", False, True),
+    ("time", "Time (µs/read)", True, True),
 #    ("saccuracy", "Score-based accuracy (%)", False),
-    ("aligned", "Percentage aligned", False),
-    ("memory", "Memory usage (GB)", False),
+    ("aligned", "Percentage aligned", False, False),
+    ("memory", "Memory usage (GB)", False, False),
 #    ("jaccuracy", "Jaccard accuracy (%)", False),
 ]
 
@@ -165,7 +165,7 @@ def plot_ends(df, outfolder, palette, read_lengths, tools, modes, linewidth):
             pdf = None
         for ends, table in df.groupby("ends"):
             title = "Single-end reads" if ends == "se" else "Paired-end reads"
-            for y, label, logscale in MEASUREMENT_TYPES:
+            for y, label, logscale, in_pdf in MEASUREMENT_TYPES:
                 fig = plot(
                     table,
                     palette,
@@ -179,7 +179,7 @@ def plot_ends(df, outfolder, palette, read_lengths, tools, modes, linewidth):
                     title=title,
                     linewidth=linewidth,
                 )
-                if pdf is not None:
+                if pdf is not None and in_pdf:
                     pdf.savefig()
                 if outfolder is not None:
                     fig.savefig(outfolder / f"ends-{ends}-{y}.pdf")
@@ -187,7 +187,7 @@ def plot_ends(df, outfolder, palette, read_lengths, tools, modes, linewidth):
 
 def plot_genomes(df, outfolder, palette, read_lengths, tools, modes, linewidth):
     for genome, table in df.groupby("genome"):
-        for y, label, logscale in MEASUREMENT_TYPES:
+        for y, label, logscale, _ in MEASUREMENT_TYPES:
             title = f"{label} – {genome}"
             fig = plot(
                 table,
