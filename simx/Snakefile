@@ -11,12 +11,13 @@ for version in config.get("versions", []):
     key = version["commit"]
     if arg := version.get("arguments", ""):
         key += "-" + arg.replace(" ", "").replace("-", "").replace("=", "")
+    extra = "-rs" if version.get("rust") else ""
     VERSIONS[key] = {
         "commit": version["commit"],
         "arguments": f" {arg}" if arg else "",
         "name": version["name"],
         "color": version["color"],
-        "binary": f"bin/strobealign/{version['commit']}",
+        "binary": f"bin/strobealign{extra}/{version['commit']}",
     }
 
 PROGRAMS = expand("strobealign-{key}", key=VERSIONS.keys())
