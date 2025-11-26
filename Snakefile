@@ -21,16 +21,10 @@ N_READS = {
     5000: 100_000,
     10000: 50_000,
 }
-# Test section
-GENOMES = ("ecoli", "fruitfly")
-N_READS = {rl: num // 100 for rl, num in N_READS.items()}
-
 LONG_READ_LENGTHS = tuple(n for n in N_READS if n >= 1000)  # single-end only
 READ_LENGTHS = tuple(n for n in N_READS if n < 1000)
 MODELS = {"clr": "data/pbsim3/QSHMM-RSII.model", "ont": "data/pbsim3/QSHMM-ONT-HQ.model", "hifi": "data/pbsim3/QSHMM-RSII.model"}
-
 DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=READ_LENGTHS)
-ILLUMINA_LONG_DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=LONG_READ_LENGTHS)
 LONG_DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=LONG_READ_LENGTHS)
 ENDS = ("pe", "se")
 
@@ -41,8 +35,7 @@ VARIATION_SETTINGS = {
     "sim5": "--snp-rate 0.005 --small-indel-rate 0.001 --max-small-indel-size 100",
     "sim6": "--snp-rate 0.05 --small-indel-rate 0.002 --max-small-indel-size 100",
 }
-# SIM = ["sim0", "sim0p1"] + list(VARIATION_SETTINGS)
-SIM = ["sim0", "sim0p1", "sim3", "sim1"]
+SIM = ["sim0", "sim0p1"] + list(VARIATION_SETTINGS)
 LONG_SIM = ["ont", "hifi", "clr"]
 
 
