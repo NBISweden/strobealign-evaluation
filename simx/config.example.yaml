@@ -3,7 +3,7 @@
 # Uncomment and change to use commits from a different repository
 # repository: "https://github.com/ksahlin/strobealign.git"
 
-mode:
+modes:
   - map
   - align
 
@@ -17,13 +17,6 @@ datasets:
   - sim4
   - sim5
   - sim6
-
-
-read-types:
-  - illumina
-  - rsii
-  - ont
-
 
 genomes:
   - fruitfly

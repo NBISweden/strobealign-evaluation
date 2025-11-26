@@ -152,7 +152,7 @@ def configure(config_path):
         if "color" in version:
             palette["strobealign-" + key] = version["color"]
 
-    modes = sorted(config.get("mode", ["align", "map"]))
+    modes = sorted(config.get("modes", ["align", "map"]))
 
     return palette, read_lengths, tools, modes
 
