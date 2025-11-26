@@ -41,8 +41,8 @@ VARIATION_SETTINGS = {
     "sim5": "--snp-rate 0.005 --small-indel-rate 0.001 --max-small-indel-size 100",
     "sim6": "--snp-rate 0.05 --small-indel-rate 0.002 --max-small-indel-size 100",
 }
-# SIM = ["sim0", "sim10p"] + list(VARIATION_SETTINGS)
-SIM = ["sim0", "sim10p", "sim3", "sim1"]
+# SIM = ["sim0", "sim0p1"] + list(VARIATION_SETTINGS)
+SIM = ["sim0", "sim0p1", "sim3", "sim1"]
 LONG_SIM = ["ont", "hifi", "clr"]
 
 
@@ -166,15 +166,11 @@ rule extract_chry:
 
 rule mason_variator:
     output:
-        vcf="variants/{sim}-{genome}.vcf",
-        fasta="variants/{sim}-{genome}.fa"
+        vcf="variants/{sim,sim[1-9]}-{genome}.vcf"
     input:
         fasta="genomes/{genome}.fa",
         fai="genomes/{genome}.fa.fai",
-        mason_variator="bin/mason_variator",
-        mason_materializer="bin/mason_materializer"
-    wildcard_constraints:
-        sim=r"(?!clr|ont|hifi|sim0|sim10p).*"
+        mason_variator="bin/mason_variator"
     params:
         variation_settings=lambda wildcards: VARIATION_SETTINGS[wildcards.sim]
     shell:
@@ -205,8 +201,6 @@ rule mason_simulator:
         fasta="genomes/{genome}.fa",
         vcf="variants/{sim}-{genome}.vcf",
         mason_simulator="bin/mason_simulator"
-    wildcard_constraints:
-        sim=r"(?!clr|ont|hifi|sim0|sim10p).*"
     params:
         extra=mason_simulator_parameters,
         n_reads=lambda wildcards: N_READS[int(wildcards.read_length)],
@@ -237,8 +231,6 @@ rule mason_simulator_long:
         fasta="genomes/{genome}.fa",
         vcf="variants/{sim}-{genome}.vcf",
         mason_simulator="bin/mason_simulator"
-    wildcard_constraints:
-        sim=r"(?!clr|ont|hifi|sim0|sim10p).*"
     params:
         n_reads=lambda wildcards: N_READS[int(wildcards.long_read_length)],
         fragment_length=lambda wildcards: int(int(wildcards.long_read_length) * 1.5),
@@ -302,16 +294,17 @@ rule sim01_long:
 def pbsim_parameters(wildcards):
     mean_read_length = int(wildcards.long_read_length)
     result = "--length-mean {}".format(mean_read_length)
+
     reference_path = "genomes/" + wildcards.genome + ".fa"
     ref_len = 0
     with open(reference_path, "r") as ref:
         for line in ref:
             if not line.startswith('>'):
                 ref_len += len(line.strip())    
-    # print("Reference lingth: {}".format(ref_len))
     num_reads = N_READS[mean_read_length]
     depth = float(num_reads * mean_read_length) / float(ref_len)
     result += " --depth {}".format(depth)
+
     if wildcards.sim == "hifi":
         result += " --pass-num 10"
     return result
@@ -401,8 +394,8 @@ rule ccs:
 # Misc
 
 rule samtools_faidx:
-    output: "genomes/{genome}.fa.fai"
-    input: "genomes/{genome}.fa"
+    output: "{genome}.fa.fai"
+    input: "{genome}.fa"
     shell: "samtools faidx {input}"
 
 
@@ -416,13 +409,13 @@ rule clone_seqan:
 
 
 rule build_mason:
-    output: "bin/mason_variator", "bin/mason_simulator", "bin/mason_materializer"
+    output: "bin/mason_variator", "bin/mason_simulator"
     input: "seqan/cloned"
     threads: 99
     shell:
         "cmake -DSEQAN_BUILD_SYSTEM=APP:mason2 -DSEQAN_ARCH_SSE4=1 -B build-seqan seqan; "
         "cmake --build build-seqan -j {threads}; "
-        "mv build-seqan/bin/mason_simulator build-seqan/bin/mason_variator build-seqan/bin/mason_materializer bin/"
+        "mv build-seqan/bin/mason_simulator build-seqan/bin/mason_variator bin/"
         #"; rm -r seqan"
 
 

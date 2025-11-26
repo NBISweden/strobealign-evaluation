@@ -30,7 +30,6 @@ class ReferenceInterval:
     name: str
     start: int
     end: int
-    quality_score: int
 
     def intersects(self, other: "ReferenceInterval"):
         if self.name != other.name:
@@ -127,8 +126,6 @@ def read_fastq(fastq_path: Path):
     read_positions = {}
     with FastxFile(fastq_path) as fastq_handle:
         for read in fastq_handle:
-            # S1_1!chr1!1787012!1788012!+
-            # print(read.name)
             gt_pattern = r'S(\d+)_(\d+)!(.*)!(\d+)!(\d+)!(\+|\-)'
             match = re.search(gt_pattern, read.name)
     
@@ -138,9 +135,60 @@ def read_fastq(fastq_path: Path):
             _, _, ref_name, ref_start, ref_end, _ = match.groups()
             if not read.name.endswith("/1"):
                 query_name = read.name + "/1"
-            read_positions[query_name] = ReferenceInterval(ref_name, int(ref_start), int(ref_end), 0)
+            read_positions[query_name] = ReferenceInterval(ref_name, int(ref_start), int(ref_end))
     
     return read_positions
+
+
+def parse_maf_alignment(alignment, consensus_names: dict, ref_index_to_name: dict, ccs_names: bool):
+    if len(alignment) != 2:
+        raise ValueError(f"{maf_path} should contain 2 alignments per entry, please make sure that it was produced by pbsim3")
+
+    ref_seq = None
+    read_seq = None
+
+    for seq_record in alignment:
+        if seq_record.id == "ref":
+            ref_seq = seq_record
+        elif seq_record.id.startswith("S"):
+            read_seq = seq_record
+
+    if ref_seq is None or read_seq is None:
+        raise ValueError(f"""{alignment} entry in {maf_path} should contain entries for \"ref\" 
+                                and \"S<>_<>\", please make sure that {maf_path} was produced by pbsim3""")
+
+    read_name = read_seq.id
+    ref_index = None
+    read_index = None
+    if not ccs_names:
+        match = re.match(r'S(\d+)_(\d+)', read_name)
+        if not match:
+            raise ValueError(f"Read name {read_name} does not match expected format S<reference_index>_<read id>")
+        ref_index = int(match.group(1))
+    else:
+        match = re.match(r'S(\d+)/(\d+)/(\d+)', read_name)
+        if not match:
+            raise ValueError(f"Read name {read_name} does not match expected format S<reference id>/<read id>/<pass id>")
+        ref_index = int(match.group(1))
+        read_index = int(match.group(2))
+    
+    if ref_index - 1 not in ref_index_to_name:
+        raise ValueError(f"Reference index {ref_index - 1} not found in reference index file")
+    ref_name = ref_index_to_name[ref_index - 1]
+
+    ref_start = ref_seq.annotations["start"]
+    ref_end = ref_start + ref_seq.annotations["size"]
+
+    if not ccs_names:
+        query_name = read_name
+    else:
+        query_name = f"S{ref_index}/{read_index}/ccs"
+        if query_name not in consensus_names:
+            return query_name, None
+    if not query_name.endswith("/1"):
+        query_name += "/1"
+
+    return query_name, ReferenceInterval(ref_name, ref_start, ref_end)
 
 
 def read_maf(maf_path: Path, ref_index_path: Path, fastq_path: Path, ccs_names: bool):
@@ -159,56 +207,10 @@ def read_maf(maf_path: Path, ref_index_path: Path, fastq_path: Path, ccs_names: 
 
     with xopen(maf_path) as maf_file:
         alignments = AlignIO.parse(maf_file, "maf")
-
         for alignment in alignments:
-            if len(alignment) != 2:
-                raise ValueError(f"{maf_path} should contain exactly 2 alignments per entry, please make sure that it was produced by pbsim3")
-
-            # Identify reference and read sequences
-            ref_seq = None
-            read_seq = None
-
-            for seq_record in alignment:
-                if seq_record.id == "ref":
-                    ref_seq = seq_record
-                elif seq_record.id.startswith("S"):
-                    read_seq = seq_record
-
-            if ref_seq is None or read_seq is None:
-                raise ValueError(f"{alignment} entry in {maf_path} should contain entries for \"ref\" and \"S<>_<>\", please make sure that {maf_path} was produced by pbsim3")
-
-            read_name = read_seq.id
-            ref_index = None
-            read_index = None
-            if not ccs_names:
-                match = re.match(r'S(\d+)_(\d+)', read_name)
-                if not match:
-                    raise ValueError(f"Read name {read_name} does not match expected format S<reference_index>_<read id>")
-                ref_index = int(match.group(1))
-            else:
-                match = re.match(r'S(\d+)/(\d+)/(\d+)', read_name)
-                if not match:
-                    raise ValueError(f"Read name {read_name} does not match expected format S<reference id>/<read id>/<pass id>")
-                ref_index = int(match.group(1))
-                read_index = int(match.group(2))
-            
-            if ref_index - 1 not in ref_index_to_name:
-                raise ValueError(f"Reference index {ref_index - 1} not found in reference index file")
-            ref_name = ref_index_to_name[ref_index - 1]
-
-            ref_start = ref_seq.annotations["start"]
-            ref_end = ref_start + ref_seq.annotations["size"]
-
-            if not ccs_names:
-                query_name = read_name
-            else:
-                query_name = f"S{ref_index}/{read_index}/ccs"
-                if query_name not in consensus_names:
-                    continue
-            if not query_name.endswith("/1"):
-                query_name += "/1"
-
-            read_positions[query_name] = ReferenceInterval(ref_name, ref_start, ref_end, 0)
+            query_name, ref_interval = parse_maf_alignment(alignment, consensus_names, ref_index_to_name, ccs_names)
+            if query_name and ref_interval:
+                read_positions[query_name] = ref_interval
 
     return read_positions
 
@@ -236,7 +238,6 @@ def read_alignments(bam_path, skip_r2: bool):
                     read.reference_name,
                     read.reference_start,
                     read.reference_end,
-                    0
                 )
         elif read.is_paired:
             query_name = read.query_name
@@ -252,7 +253,6 @@ def read_alignments(bam_path, skip_r2: bool):
                     read.reference_name,
                     read.reference_start,
                     read.reference_end,
-                    0
                 )
         elif read.is_unmapped:  # single and unmapped
             assert not read.is_paired
@@ -273,12 +273,11 @@ def read_paf(path: Path):
         file = xopen(path)
     for line in file:
         vals = line.split()
-        query_name, reference_name, reference_start, reference_end, quality_score = (
+        query_name, reference_name, reference_start, reference_end = (
             vals[0],
             vals[5],
             int(vals[7]),
             int(vals[8]),
-            int(vals[11])
         )
         # Minimap2 2.30 no longer strips the /1 and /2 from the query names
         # when reading the input file, but still adds /1 and /2 when writing
@@ -292,7 +291,7 @@ def read_paf(path: Path):
             mapped_to_multiple_pos += 1
             continue
         else:
-            read_positions[query_name] = ReferenceInterval(reference_name, reference_start, reference_end, quality_score)
+            read_positions[query_name] = ReferenceInterval(reference_name, reference_start, reference_end)
     return read_positions, mapped_to_multiple_pos
 
 

@@ -25,10 +25,13 @@ if config["programs"]:
 PLOTS = ("accuracy", "aligned", "time", "memory")
 # For reads shorter than this, the evaluation includes paired-end data
 LONG_READ_LENGTH = 1000
-LONG_READ_LENGTHS = tuple(n for n in READ_LENGTHS if n >= 1000)
-LONG_READ_DATASETS = ["ont", "clr", "SIM1", "hifi"]
+LONG_READ_DATASETS = ["ont", "clr", "hifi"]
 
 import itertools
+
+wildcard_constraints:
+    short_read_dataset=r"(?!clr|ont|hifi).*",
+    long_read_dataset=r"(clr|ont|hifi)"
 
 localrules:
     result_csv, concat_csvs, concat_genome_csvs, plot_ends, plot_genomes
@@ -167,7 +170,6 @@ rule minimap2_paf_single_end:
         paf=temp("runs/minimap2/{dataset}-{genome}-{read_length}/se.paf.gz")
     input:
         index=minimap2_index,
-        genome="genomes/{genome}.fa",
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
     log:
         "runs/minimap2/{dataset}-{genome}-{read_length}/se.paf.log"
@@ -353,12 +355,10 @@ rule strobealign_paf_single_end:
 
 rule bam_accuracy:
     output:
-        txt="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.bam.accuracy.txt"
+        txt="runs/{program}/{short_read_dataset}-{genome}-{read_length}/{ends}.bam.accuracy.txt"
     input:
-        truth="datasets/{dataset}/{genome}-{read_length}/truth.bam",
-        bam="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.bam",
-    wildcard_constraints:
-        dataset=r"(?!clr|ont|hifi).*"
+        truth="datasets/{short_read_dataset}/{genome}-{read_length}/truth.bam",
+        bam="runs/{program}/{short_read_dataset}-{genome}-{read_length}/{ends}.bam",
     params:
         only_r1=lambda w: " --only-r1" if w.ends == "se" else "",
         extra=lambda w: " --multiple-primary --synthesize-unmapped" if w.program == "xmapper" else ""
@@ -369,12 +369,10 @@ rule bam_accuracy:
 
 rule paf_accuracy:
     output:
-        txt="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.accuracy.txt"
+        txt="runs/{program}/{short_read_dataset}-{genome}-{read_length}/{ends}.paf.accuracy.txt"
     input:
-        truth="datasets/{dataset}/{genome}-{read_length}/truth.bam",
-        paf="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.gz"
-    wildcard_constraints:
-        dataset=r"(?!clr|ont|hifi).*"
+        truth="datasets/{short_read_dataset}/{genome}-{read_length}/truth.bam",
+        paf="runs/{program}/{short_read_dataset}-{genome}-{read_length}/{ends}.paf.gz"
     params:
         only_r1=lambda w: " --only-r1" if w.ends == "se" else ""
     shell:
@@ -382,45 +380,22 @@ rule paf_accuracy:
         "\n mv -v {output.txt}.tmp {output.txt}"
 
 
-rule sim1_accuracy:
+rule lr_accuracy:
     output:
-        txt="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.accuracy.txt"
+        txt="runs/{program}/{long_read_dataset}-{genome}-{read_length}/{ends}.paf.accuracy.txt"
     input:
-        truth="datasets/{dataset}/{genome}-{read_length}/truth.maf.gz",
+        truth="datasets/{long_read_dataset}/{genome}-{read_length}/truth.maf.gz",
         faidx="genomes/{genome}.fa.fai",
-        paf="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.gz",
-        fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz"
-    wildcard_constraints:
-        dataset=r"(clr|ont|hifi).*"
+        paf="runs/{program}/{long_read_dataset}-{genome}-{read_length}/{ends}.paf.gz",
+        fastq="datasets/{long_read_dataset}/{genome}-{read_length}/1.fastq.gz"
     params:
         only_r1=lambda w: " --only-r1" if w.ends == "se" else "",
-        ccs=lambda w: f" --ccs --fastq datasets/{w.dataset}/{w.genome}-{w.read_length}/1.fastq.gz" if w.dataset == "hifi" else ""
+        ccs=lambda w: f" --ccs --fastq datasets/{w.long_read_dataset}/{w.genome}-{w.read_length}/1.fastq.gz" 
+            if w.long_read_dataset == "hifi" else ""
     shell:
         "python -m saeval.get_accuracy{params.only_r1} --truth {input.truth} --faidx {input.faidx} {params.ccs} --predicted_paf {input.paf} > {output.txt}.tmp"
         "\n mv -v {output.txt}.tmp {output.txt}"
 
-
-# rule sim1_accuracy:
-#     output:
-#         txt="runs/{program}/{dataset,sim1(ont|clr)}-{genome}-{read_length}/se.paf.accuracy.txt"
-#     input:
-#         paf="runs/{program}/{dataset,sim1(ont|clr)}-{genome}-{read_length}/se.paf.gz",
-#         fastq="datasets/{dataset,sim1(ont|clr)}/{genome}-{read_length}/1.fastq.gz",
-#         n_reads="datasets/{dataset,sim1(ont|clr)}/{genome}-{read_length}/se.readcount.txt"
-#     params:
-#         jaccard_thr=0.0001,
-#         outdir="runs/{program}/{dataset}-{genome}-{read_length}"
-#     shell:
-#         """
-#         paftools.js mapeval -r {params.jaccard_thr} {input.paf} > "{params.outdir}/acc.meval"
-#         EVAL_STR=$(tail -1 "{params.outdir}/acc.meval")
-#         N_READS=$(< {input.n_reads})
-#         N_ALIGNED=$(echo "$EVAL_STR" | cut -f6 | tr -d ' ')
-#         PER_WRONG=$(echo "$EVAL_STR" | cut -f5 | tr -d ' ')
-#         echo -en "$(echo "scale=6; 100 * ($N_ALIGNED / $N_READS)" | bc -l | sed 's/^\./0./')\t" >> {output.txt}
-#         echo -en "$(echo "scale=6; 100 * (1 - $PER_WRONG)" | bc -l | sed 's/^\./0./')\t" >> {output.txt}
-#         echo -en "0\t0\t0\n" >> {output.txt}
-#         """
 
 rule count_reads_se:
     output:
@@ -444,7 +419,7 @@ rule result_csv:
     input:
         txt="runs/{prog}/{dataset}-{genome}-{read_length}/{ends}.{bampaf}.accuracy.txt",
         read_count="datasets/{dataset}/{genome}-{read_length}/{ends}.readcount.txt",
-        log="runs/{prog}/{dataset}-{genome}-{read_length}/{ends}.{bampaf}.log"
+        log="runs/{prog}/{dataset}-{genome}-{read_length}/{ends}.{bampaf}.log",
     params:
         typ=lambda wildcards: "map" if wildcards.bampaf == "paf" else "align"
     shell:
