@@ -14,7 +14,7 @@ dependencies:
   - cmake=4.2
   - cxx-compiler
   - seaborn
-  - minimap2=2.28
+  - minimap2=2.30
   - isa-l
   - pyyaml
   - pyfaidx
