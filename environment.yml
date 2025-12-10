@@ -12,6 +12,7 @@ dependencies:
   - pysam=0.23
   - dnaio
   - bwa=0.7.19
+  - x-mapper=1.2.0
   - samtools=1.22
   - cmake=4.2
   - cxx-compiler

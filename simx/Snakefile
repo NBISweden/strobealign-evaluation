@@ -30,7 +30,7 @@ LONG_READ_LENGTH = 1000
 import itertools
 
 localrules:
-    result_csv, concat_csvs, concat_genome_csvs, plot_ends, plot_genomes, download_xmapper
+    result_csv, concat_csvs, concat_genome_csvs, plot_ends, plot_genomes
 
 rule final:
     input:
@@ -192,17 +192,10 @@ rule minimap2_paf_paired_end:
 
 # Map reads with x-mapper
 
-rule download_xmapper:
-    output:
-        bin="bin/x-mapper-1.1.0-beta13.jar"
-    shell:
-        "cd bin && wget https://github.com/mathjeff/Mapper/releases/download/1.1.0-beta13/x-mapper-1.1.0-beta13.jar"
-
 rule xmapper_single_end:
     output:
         bam=temp("runs/xmapper/{dataset}-{genome}-{read_length}/se.bam")
     input:
-        binary="bin/x-mapper-1.1.0-beta13.jar",
         fasta="genomes/{genome}.fa",
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
     log:
@@ -217,8 +210,7 @@ rule xmapper_single_end:
         # " --max-penalty-span 0"
         "cat {input} > /dev/null; "
         "/usr/bin/time -v"
-        " java -Xms200m -Xmx48g"
-        " -jar {input.binary}"
+        " x-mapper -Xms200m -Xmx48g"
         " --num-threads {threads}"
         " --out-sam /dev/stdout"
         " --reference {input.fasta}"
@@ -233,7 +225,6 @@ rule xmapper_paired_end:
     output:
         bam=temp("runs/xmapper/{dataset}-{genome}-{read_length}/pe.bam")
     input:
-        binary="bin/x-mapper-1.1.0-beta13.jar",
         fasta="genomes/{genome}.fa",
         r1_fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz",
         r2_fastq="datasets/{dataset}/{genome}-{read_length}/2.fastq.gz",
@@ -245,8 +236,7 @@ rule xmapper_paired_end:
     shell:
         "cat {input} > /dev/null; "
         "/usr/bin/time -v"
-        " java -Xms200m -Xmx48g"
-        " -jar {input.binary}"
+        " x-mapper -Xms200m -Xmx48g"
         " --num-threads {threads}"
         " --out-sam /dev/stdout"
         " --reference {input.fasta}"
