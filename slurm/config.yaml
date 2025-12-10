@@ -1,10 +1,10 @@
 # SLURM profile to be used with 'snakemake --profile=slurm'
 
-slurm: true
+executor: slurm
 
 default-resources:
-  slurm_account: XXX
-  slurm_partition: YYY
+#  slurm_account: XXX   # Adjust or set $SLURM_ACCOUNT
+#  slurm_partition: YYY  # Adjust
   runtime: 120
   mem_mb: 2000
 
@@ -13,9 +13,23 @@ set-resources:
     runtime: 10
     mem_mb: 2000
 
+  mason_variator:
+    mem_mb: 16000
+    runtime: 720
+
   mason_simulator:
-    mem_mb: 8000
+    mem_mb: 32000
     runtime: 2880
+
+  mason_simulator_long:
+    mem_mb: 32000
+    runtime: 2880
+
+  sim0:
+    runtime: 900
+
+  sim0_long:
+    runtime: 900
 
   bwa_index:
     mem_mb: 8000
@@ -34,58 +48,47 @@ set-resources:
 
   bwa_mem_paired_end:
     mem_mb: 32000
-    cpus_per_task: 20
 
   bwa_mem_single_end:
     mem_mb: 32000
-    cpus_per_task: 20
 
   minimap2_index:
     mem_mb: 32000
 
   minimap2_paf_paired_end:
     mem_mb: 24000
-    cpus_per_task: 20
 
   minimap2_paf_single_end:
     mem_mb: 24000
-    cpus_per_task: 20
 
   minimap2_paired_end:
     mem_mb: 24000
-    cpus_per_task: 20
 
   minimap2_single_end:
     mem_mb: 24000
-    cpus_per_task: 20
 
   paf_accuracy:
     mem_mb: 2000
 
+  xmapper_paired_end:
+    mem_mb: 32000
+    runtime: 120
+
+  xmapper_single_end:
+    mem_mb: 32000
+    runtime: 120
+
   strobealign_paf_paired_end:
     mem_mb: 38000
-    cpus_per_task: 20
 
   strobealign_paf_single_end:
     mem_mb: 38000
-    cpus_per_task: 20
 
   strobealign_paired_end:
     mem_mb: 38000
-    cpus_per_task: 20
 
   strobealign_single_end:
     mem_mb: 38000
-    cpus_per_task: 20
-
-  xmapper_paired_end:
-    mem_mb: 24000
-    cpus_per_task: 20
-
-  xmapper_single_end:
-    mem_mb: 24000
-    cpus_per_task: 20
-
 
 rerun-triggers: mtime
 jobs: 1000
