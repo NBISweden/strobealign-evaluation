@@ -90,7 +90,7 @@ We have not made this modification as it adds hundreds of CPU hours for little g
 Makes the required software available:
 
     conda env create --file environment.yml
-    conda activate strobealign-eval
+    conda activate strobealign
 
 Download the genomes and simulate reads:
 

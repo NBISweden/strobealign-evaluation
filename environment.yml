@@ -1,4 +1,4 @@
-name: strobealign-eval
+name: strobealign
 channels:
   - conda-forge
   - bioconda
