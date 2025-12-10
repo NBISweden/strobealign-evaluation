@@ -1,21 +1,43 @@
 # SLURM profile to be used with 'snakemake --profile=slurm'
 
-slurm: true
+cluster-sidecar: "slurm-sidecar.py"
+cluster-cancel: "scancel"
+restart-times: "0"
+jobscript: "slurm-jobscript.sh"
+cluster: "slurm-submit.py"
+cluster-status: "slurm-status.py"
+max-jobs-per-second: "10"
+max-status-checks-per-second: "10"
+local-cores: 1
+latency-wait: "5"
+use-conda: "True"
+use-singularity: "False"
+jobs: "500"
+printshellcmds: "True"
 
 default-resources:
-  slurm_account: XXX
-  slurm_partition: YYY
   runtime: 120
   mem_mb: 2000
+  # account and partition should be specified in in settings.json
 
 set-resources:
   single_end_truth:
     runtime: 10
     mem_mb: 2000
 
+  mason_variator:
+    mem_mb: 16000
+    runtime: 720
+
   mason_simulator:
-    mem_mb: 8000
+    mem_mb: 32000
     runtime: 2880
+
+  sim0:
+    runtime: 600
+
+  ccs:
+    mem_mb: 32000
 
   bwa_index:
     mem_mb: 8000
@@ -34,60 +56,44 @@ set-resources:
 
   bwa_mem_paired_end:
     mem_mb: 32000
-    cpus_per_task: 20
 
   bwa_mem_single_end:
     mem_mb: 32000
-    cpus_per_task: 20
 
   minimap2_index:
     mem_mb: 32000
 
   minimap2_paf_paired_end:
     mem_mb: 24000
-    cpus_per_task: 20
 
   minimap2_paf_single_end:
     mem_mb: 24000
-    cpus_per_task: 20
 
   minimap2_paired_end:
     mem_mb: 24000
-    cpus_per_task: 20
 
   minimap2_single_end:
     mem_mb: 24000
-    cpus_per_task: 20
 
-  paf_accuracy:
-    mem_mb: 2000
+  xmapper_paired_end:
+    mem_mb: 32000
+    runtime: 120
+
+  xmapper_single_end:
+    mem_mb: 32000
+    runtime: 120
 
   strobealign_paf_paired_end:
     mem_mb: 38000
-    cpus_per_task: 20
 
   strobealign_paf_single_end:
     mem_mb: 38000
-    cpus_per_task: 20
 
   strobealign_paired_end:
     mem_mb: 38000
-    cpus_per_task: 20
 
   strobealign_single_end:
     mem_mb: 38000
-    cpus_per_task: 20
 
-  xmapper_paired_end:
-    mem_mb: 24000
-    cpus_per_task: 20
-
-  xmapper_single_end:
-    mem_mb: 24000
-    cpus_per_task: 20
-
-
-rerun-triggers: mtime
-jobs: 1000
-cores: 8
-printshellcmds: true
+#set-threads:
+#  my-example-rule: 10

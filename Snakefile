@@ -23,6 +23,7 @@ N_READS = {
 }
 LONG_READ_LENGTHS = tuple(n for n in N_READS if n >= 1000)  # single-end only
 READ_LENGTHS = tuple(n for n in N_READS if n < 1000)
+MODELS = {"clr": "data/pbsim3/QSHMM-RSII.model", "ont": "data/pbsim3/QSHMM-ONT-HQ.model", "hifi": "data/pbsim3/QSHMM-RSII.model"}
 DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=READ_LENGTHS)
 LONG_DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=LONG_READ_LENGTHS)
 ENDS = ("pe", "se")
@@ -34,7 +35,8 @@ VARIATION_SETTINGS = {
     "sim5": "--snp-rate 0.005 --small-indel-rate 0.001 --max-small-indel-size 100",
     "sim6": "--snp-rate 0.05 --small-indel-rate 0.002 --max-small-indel-size 100",
 }
-SIM = ["sim0", "sim1"] + list(VARIATION_SETTINGS)
+SIM = ["sim0", "sim0p1"] + list(VARIATION_SETTINGS)
+LONG_SIM = ["ont", "hifi", "clr"]
 
 
 wildcard_constraints:
@@ -51,7 +53,8 @@ rule:
     input:
         expand("datasets/{sim}/{ds}/{r}.fastq.gz", sim=SIM, ds=DATASETS, r=(1, 2)),
         expand("datasets/{sim}/{ds}/truth.bam", sim=SIM, ds=DATASETS + LONG_DATASETS),
-        expand("datasets/{sim}/{ds}/1.fastq.gz", sim=SIM, ds=LONG_DATASETS),
+        expand("datasets/{sim}/{ds}/1.fastq.gz", sim=SIM + LONG_SIM, ds=LONG_DATASETS),
+        expand("datasets/{sim}/{ds}/truth.maf.gz", sim=LONG_SIM, ds=LONG_DATASETS)
 
 # Download genomes
 
@@ -122,7 +125,7 @@ rule uncompress_chm13:
         "zcat {input} > {output}"
 
 rule filter_rye:
-    output: "genomes/rye.fa"
+    output: "genomes/rye_raw.fa"
     input: rules.download_rye.output
     shell:
         """
@@ -136,6 +139,44 @@ rule filter_rye:
         rm {output}.tmp.fa {output}.tmp.fa.fai {output}.tmp.regions.txt
         """
 
+rule chunk_rye:
+    input:
+        ref="genomes/rye_raw.fa"
+    output:
+        chunked="genomes/rye.fa"
+    params:
+        max_chunk_size = 1_000_000_000
+    run:
+        from Bio import SeqIO
+        from Bio.Seq import Seq
+        from Bio.SeqRecord import SeqRecord
+
+        with open(output.chunked, 'w') as out_handle:
+            for record in SeqIO.parse(input.ref, "fasta"):
+                seq_len = len(record.seq)
+
+                if seq_len <= params.max_chunk_size:
+                    SeqIO.write(record, out_handle, "fasta")
+                else:
+                    num_chunks = (seq_len + params.max_chunk_size - 1) // params.max_chunk_size
+
+                    for i in range(num_chunks):
+                        start = i * params.max_chunk_size
+                        end = min((i + 1) * params.max_chunk_size, seq_len)
+
+                        chunk_seq = record.seq[start:end]
+                        chunk_id = f"{record.id}_chunk{i+1}of{num_chunks}"
+                        chunk_desc = f"{record.description} | chunk {i+1}/{num_chunks} | pos {start+1}-{end}"
+
+                        chunk_record = SeqRecord(
+                            chunk_seq,
+                            id=chunk_id,
+                            description=chunk_desc
+                        )
+
+                        SeqIO.write(chunk_record, out_handle, "fasta")
+
+
 rule extract_chry:
     output: "genomes/chrY.fa"
     input: fasta="genomes/CHM13.fa", fai="genomes/CHM13.fa.fai"
@@ -147,7 +188,7 @@ rule extract_chry:
 
 rule mason_variator:
     output:
-        vcf="variants/{sim}-{genome}.vcf"
+        vcf="variants/{sim,sim[1-9]}-{genome}.vcf"
     input:
         fasta="genomes/{genome}.fa",
         fai="genomes/{genome}.fa.fai",
@@ -272,6 +313,106 @@ rule sim01_long:
         "\nmv {output.bam}.tmp.bam {output.bam}"
 
 
+def pbsim_parameters(wildcards):
+    mean_read_length = int(wildcards.long_read_length)
+    result = "--length-mean {}".format(mean_read_length)
+    
+    reference_path = "genomes/" + wildcards.genome + ".fa"
+    ref_len = 0
+    with open(reference_path, "r") as ref:
+        for line in ref:
+            if not line.startswith('>'):
+                ref_len += len(line.strip())    
+    num_reads = N_READS[mean_read_length]
+    depth = float(num_reads * mean_read_length) / float(ref_len)
+    result += " --depth {}".format(depth)
+
+    if wildcards.sim == "hifi":
+        result += " --pass-num 10"
+    return result
+
+
+def pbsim_outprefix(wildcards):
+    return f"datasets/{wildcards.sim}/{wildcards.genome}-{wildcards.long_read_length}/tmp"
+
+def first_bam_name(wildcards):
+    if wildcards.sim == "hifi":
+        return pbsim_outprefix(wildcards) + "_0001.bam"
+    return []
+
+
+rule pbsim:
+    output:
+        maf="datasets/{sim,clr|ont}/{genome}-{long_read_length}/truth.maf.gz",
+        fastq="datasets/{sim,clr|ont}/{genome}-{long_read_length}/1.fastq.gz"
+    input:
+        fasta="genomes/{genome}.fa",
+        model=lambda wildcards: MODELS[wildcards.sim]
+    params:
+        extra=pbsim_parameters,
+        outprefix=pbsim_outprefix,
+        outid="S"
+    log: "logs/pbsim3/{sim}-{genome}-{long_read_length}.log"
+    shell:
+        "pbsim"
+        " --strategy wgs"
+        " --genome {input.fasta}"
+        " --method qshmm"
+        " --qshmm {input.model}"
+        " --prefix {params.outprefix}"
+        " --id-prefix {params.outid}"
+        " {params.extra}"
+        " --length-sd 0"
+        "\ncat {params.outprefix}_*.fq.gz > {output.fastq}"
+        "\ncat {params.outprefix}_*.maf.gz > {output.maf}"
+        "\nrm {params.outprefix}_*.ref"
+        "\nrm {params.outprefix}_*.maf.gz"
+        "\nrm {params.outprefix}_*.fq.gz"
+
+
+rule pbsim_hifi:
+    output:
+        maf="datasets/{sim,hifi}/{genome}-{long_read_length}/truth.maf.gz",
+        bam=temp("datasets/{sim,hifi}/{genome}-{long_read_length}/1.bam")
+    input:
+        fasta="genomes/{genome}.fa",
+        model=lambda wildcards: MODELS[wildcards.sim]
+    params:
+        extra=pbsim_parameters,
+        outprefix=pbsim_outprefix,
+        outid="S"
+    log: "logs/pbsim3/{sim,hifi}-{genome}-{long_read_length}.log"
+    shell:
+        "pbsim"
+        " --strategy wgs"
+        " --genome {input.fasta}"
+        " --method qshmm"
+        " --qshmm {input.model}"
+        " --prefix {params.outprefix}"
+        " --id-prefix {params.outid}"
+        " {params.extra}"
+        " --length-sd 0"
+        "\ncat {params.outprefix}_*.maf.gz > {output.maf}"
+        "\nrm {params.outprefix}_*.ref"
+        "\nrm {params.outprefix}_*.maf.gz"
+        "\nsamtools merge -o {output.bam} {params.outprefix}_*.bam"
+        "\nrm {params.outprefix}_*.bam"
+
+
+rule ccs:
+    output:
+        fastq="datasets/hifi/{genome}-{long_read_length}/1.fastq.gz"
+    input:
+        bam="datasets/hifi/{genome}-{long_read_length}/1.bam"
+    log:
+        "datasets/hifi/{genome}-{long_read_length}/ccs.log"
+    threads:
+        32
+    shell:
+        """
+        ccs --log-file {log} -j {threads} {input.bam} {output.fastq} 
+        """
+
 # Misc
 
 rule samtools_faidx:
@@ -298,3 +439,14 @@ rule build_mason:
         "cmake --build build-seqan -j {threads}; "
         "mv build-seqan/bin/mason_simulator build-seqan/bin/mason_variator bin/"
         #"; rm -r seqan"
+
+
+rule download_pbsim_models:
+    output: "data/pbsim3/QSHMM-ONT-HQ.model", "data/pbsim3/QSHMM-RSII.model"
+    params:
+        outdir = "data/pbsim3"
+    threads: 99
+    shell:
+        "git clone https://github.com/yukiteruono/pbsim3"
+        "; mv pbsim3/data/* {params.outdir}"
+        "; rm -rf pbsim3"
