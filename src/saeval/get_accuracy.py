@@ -208,7 +208,7 @@ def read_maf(maf_path: Path, ref_index_path: Path, fastq_path: Path, ccs_names: 
     with xopen(maf_path) as maf_file:
         alignments = AlignIO.parse(maf_file, "maf")
         for alignment in alignments:
-            query_name, ref_interval = parse_maf_alignment(alignment)
+            query_name, ref_interval = parse_maf_alignment(alignment, consensus_names, ref_index_to_name, ccs_names)
             if query_name and ref_interval:
                 read_positions[query_name] = ref_interval
 
