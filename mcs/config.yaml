@@ -1,14 +1,22 @@
+modes:
+  - map
+  - align
+
+ends:
+  - se
+  - pe
+
 datasets:
-  - sim3
+  - sim0
   - sim4
-  - sim5
+  - sim6
 
 genomes:
-  - drosophila
+  - fruitfly
   - maize
   - CHM13
   - rye
-#  - ecoli50
+#  - chrY
 
 read-lengths:
   - 50
@@ -18,48 +26,46 @@ read-lengths:
   - 200
   - 300
   - 500
+  - 1000
+  - 5000
+  - 10000
 
 # Programs to run in addition to strobealign
 programs:
  - bwamem
  - minimap2
- - xmapper
+# - xmapper
 
-# Strobealign commits
 # For color names, see https://matplotlib.org/stable/gallery/color/named_colors.html
-commits:
-  - key: "0.14.0"
-    hash: "b3b8f485119ddb8c18d071f45819200cacbbf168"
+# tab:green
+# plum
+# navy
+# brown
+# black
+# cyan
+# red
+
+versions:
+  - commit: "caa3745f"
+    name: "strobealign 0.17.0 mcs=always"
     color: "tab:green"
-    name: "strobealign 0.14.0"  # displayed in plots
-#  - key: "0.15.0"
-#    hash: "8f7988143f0000aed93026db2cd4e9e1ff7646f0"
-#    color: ""
-#    name: "strobealign 0.15.0"
 
-# Benchmarked for first revision of manuscript:
-  - key: "mcs-022a721"
-    hash: "022a7219880eb842449da8a65874a547ac58f0d1"
-    color: "#333"
-    name: "strobealign MCS"
+  - commit: "caa3745f"
+    name: "strobealign 0.17.0 mcs=off"
+    arguments: "--mcs=off"
+    color: "grey"
 
-# - new MCS rescue
-  - key: "mcs-feed434"
-    hash: "feed43421c499e1110f166c0a56bb4e6a98c1196"
+  - commit: "caa3745f"
+    name: "strobealign 0.17.0 mcs=rescue"
+    arguments: "--mcs=rescue"
     color: "plum"
-    name: "strobealign MCS-R"
 
-# Rejected alternatives
-#
-# # - 1st syncmer always base
-#   - key: "mcs-c338863"
-#     hash: "c3388635cbdee834929c252bb6b3ea1a9e0c3b42"
-#     color: ""
-#     name: "strobealign MCS-B"
+  - commit: "caa3745f"
+    name: "strobealign 0.17.0 mcs=first-strobe"
+    arguments: "--mcs=first-strobe"
+    color: "lightgreen"
 
-# # - 1st syncmer always base
-# # - new MCS rescue
-#   - key: "mcs-bfce78a"
-#     hash: "bfce78a6741f6ad05d04f3b1b41fdef1a3c18f24"
-#     color: ""
-#     name: "strobealign MCS-BR"
+  - commit: "caa3745f"
+    name: "strobealign 0.17.0 noisy"
+    arguments: "-k 16 -s 12 -l 2 -u 2"
+    color: "red"
