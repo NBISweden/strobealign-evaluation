@@ -53,6 +53,7 @@ def plot(
     linewidth=1.5,
     logscale: bool = False,
     title: Optional[str] = None,
+    legend: str = "right",
 ):
     if y == "memory":
         tools = tools.copy()
@@ -94,7 +95,18 @@ def plot(
         legend_labels += modes
     else:
         legend_labels = [name for key, name in tools.items()]
-    sns.move_legend(g, loc="right", labels=legend_labels)
+
+    if legend == "right":
+        sns.move_legend(g, loc="right", labels=legend_labels)
+    elif legend == "below":
+        sns.move_legend(
+            g,
+            loc="upper left",
+            bbox_to_anchor=(0, 0),
+            frameon=True,
+            ncols=len(legend_labels),
+            labels=legend_labels,
+        )
 
     g.set(xscale="log")
     if logscale:
@@ -157,7 +169,7 @@ def configure(config_path):
     return palette, read_lengths, tools, modes
 
 
-def plot_ends(df, outfolder, palette, read_lengths, tools, modes, linewidth):
+def plot_ends(df, outfolder, palette, read_lengths, tools, modes, linewidth, legend):
     with ExitStack() as stack:
         if outfolder is not None:
             pdf = stack.enter_context(PdfPages(outfolder / "ends.pdf"))
@@ -178,6 +190,7 @@ def plot_ends(df, outfolder, palette, read_lengths, tools, modes, linewidth):
                     label=label,
                     title=title,
                     linewidth=linewidth,
+                    legend=legend,
                 )
                 if pdf is not None and in_pdf:
                     pdf.savefig()
@@ -185,7 +198,7 @@ def plot_ends(df, outfolder, palette, read_lengths, tools, modes, linewidth):
                     fig.savefig(outfolder / f"ends-{ends}-{y}.pdf")
 
 
-def plot_genomes(df, outfolder, palette, read_lengths, tools, modes, linewidth):
+def plot_genomes(df, outfolder, palette, read_lengths, tools, modes, linewidth, legend):
     for genome, table in df.groupby("genome"):
         for y, label, logscale, _ in MEASUREMENT_TYPES:
             title = f"{label} – {genome}"
@@ -201,6 +214,7 @@ def plot_genomes(df, outfolder, palette, read_lengths, tools, modes, linewidth):
                 label=label,
                 title=title,
                 linewidth=linewidth,
+                legend=legend,
             )
             if outfolder is not None:
                 fig.savefig(outfolder / f"genome-{genome}-{y}.pdf")
@@ -218,9 +232,9 @@ def main(args):
     table["time"] = table["time"] * 1E6 / table["read_count"]
     outfolder = Path(args.outfolder)
     if args.genome:
-        plot_genomes(table, outfolder, palette, read_lengths, tools, modes, args.linewidth)
+        plot_genomes(table, outfolder, palette, read_lengths, tools, modes, args.linewidth, legend=args.legend)
     else:
-        plot_ends(table, outfolder, palette, read_lengths, tools, modes, args.linewidth)
+        plot_ends(table, outfolder, palette, read_lengths, tools, modes, args.linewidth, legend=args.legend)
 
 
 if __name__ == "__main__":
@@ -230,6 +244,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--config", "-c", help="YAML configuration")
     parser.add_argument("--linewidth", type=int, default=2)
+    parser.add_argument("--legend", choices=("below", "right"), default="right")
     parser.add_argument("--genome", action="store_true", help="Create genome-specific plots (with both single-end and paired-end measurements)")
     parser.add_argument("csv", help="Results file")
     parser.add_argument("outfolder", help="output folder")
