@@ -185,6 +185,12 @@ def read_paf(path: Path):
             int(vals[7]),
             int(vals[8]),
         )
+        # Minimap2 2.30 no longer strips the /1 and /2 from the query names
+        # when reading the input file, but still adds /1 and /2 when writing
+        # PAF, so we end up with query names ending in /1/1 or /2/2.
+        if query_name.endswith("/1/1") or query_name.endswith("/2/2"):
+            query_name = query_name[:-2]
+
         if not query_name.endswith("/1") and not query_name.endswith("/2"):
             query_name += "/1"
         if query_name in read_positions:
