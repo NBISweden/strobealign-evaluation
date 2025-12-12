@@ -53,6 +53,7 @@ def plot(
     linewidth=1.5,
     solid: bool = False,
     logscale: bool = False,
+    xlogscale: bool = True,
     title: Optional[str] = None,
     legend: str = "right",
 ):
@@ -109,7 +110,8 @@ def plot(
             labels=legend_labels,
         )
 
-    g.set(xscale="log")
+    if xlogscale:
+        g.set(xscale="log")
     if logscale:
         g.set(yscale="log")
         g.set(
@@ -170,7 +172,7 @@ def configure(config_path):
     return palette, read_lengths, tools, modes
 
 
-def plot_ends(df, outfolder, palette, read_lengths, tools, modes, linewidth, solid, legend):
+def plot_ends(df, outfolder, palette, read_lengths, tools, modes, xlogscale, linewidth, solid, legend):
     with ExitStack() as stack:
         if outfolder is not None:
             pdf = stack.enter_context(PdfPages(outfolder / "ends.pdf"))
@@ -187,6 +189,7 @@ def plot_ends(df, outfolder, palette, read_lengths, tools, modes, linewidth, sol
                     read_lengths,
                     y=y,
                     logscale=logscale,
+                    xlogscale=xlogscale,
                     row="genome",
                     label=label,
                     title=title,
@@ -200,7 +203,7 @@ def plot_ends(df, outfolder, palette, read_lengths, tools, modes, linewidth, sol
                     fig.savefig(outfolder / f"ends-{ends}-{y}.pdf")
 
 
-def plot_genomes(df, outfolder, palette, read_lengths, tools, modes, linewidth, solid, legend):
+def plot_genomes(df, outfolder, palette, read_lengths, tools, modes, xlogscale, linewidth, solid, legend):
     for genome, table in df.groupby("genome"):
         for y, label, logscale, _ in MEASUREMENT_TYPES:
             title = f"{label} – {genome}"
@@ -212,6 +215,7 @@ def plot_genomes(df, outfolder, palette, read_lengths, tools, modes, linewidth, 
                 read_lengths,
                 y=y,
                 logscale=logscale,
+                xlogscale=xlogscale,
                 row="ends",
                 label=label,
                 title=title,
@@ -235,9 +239,9 @@ def main(args):
     table["time"] = table["time"] * 1E6 / table["read_count"]
     outfolder = Path(args.outfolder)
     if args.genome:
-        plot_genomes(table, outfolder, palette, read_lengths, tools, modes, args.linewidth, args.solid, legend=args.legend)
+        plot_genomes(table, outfolder, palette, read_lengths, tools, modes, args.xlogscale, args.linewidth, args.solid, legend=args.legend)
     else:
-        plot_ends(table, outfolder, palette, read_lengths, tools, modes, args.linewidth, args.solid, legend=args.legend)
+        plot_ends(table, outfolder, palette, read_lengths, tools, modes, args.xlogscale, args.linewidth, args.solid, legend=args.legend)
 
 
 if __name__ == "__main__":
@@ -246,6 +250,7 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--config", "-c", help="YAML configuration")
+    parser.add_argument("--linear-x", dest="xlogscale", default=True, action="store_false", help="Plot linear read length, not logscale")
     parser.add_argument("--linewidth", type=int, default=2)
     parser.add_argument("--solid", action="store_true", help="Line style depends on mode only (otherwise it depends on tool if plotting only one of map/align")
     parser.add_argument("--legend", choices=("below", "right"), default="right")
