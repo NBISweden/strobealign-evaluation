@@ -1,0 +1,35 @@
+modes:
+  - map
+
+ends:
+  - se
+
+datasets:
+  - sim0
+  - sim4
+  - sim6
+
+genomes:
+  - fruitfly
+  - maize
+  - CHM13
+  - rye
+
+read-lengths:
+  - 1000
+  - 5000
+  - 10000
+
+# Programs to run in addition to strobealign
+programs:
+ - minimap2
+
+versions:
+  - commit: "caa3745f"
+    name: "strobealign-MCS"
+    color: "black"
+
+  - commit: "caa3745f"
+    name: "strobealign-MCS “noisy”"
+    arguments: "-k 16 -s 12 -l 2 -u 2"
+    color: "red"

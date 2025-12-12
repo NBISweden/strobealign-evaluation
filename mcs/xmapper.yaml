@@ -1,0 +1,31 @@
+modes:
+  - align
+
+ends:
+  - se
+  - pe
+
+datasets:
+  - sim0
+  - sim4
+  - sim6
+
+genomes:
+  - CHM13
+
+read-lengths:
+  - 50
+  - 75
+  - 100
+  - 150
+  - 200
+  - 300
+  - 500
+
+programs:
+ - xmapper
+
+versions:
+  - commit: "caa3745f"
+    name: "strobealign-MCS"
+    color: "black"

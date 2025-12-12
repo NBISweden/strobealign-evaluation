@@ -1,0 +1,39 @@
+modes:
+  - map
+  - align
+
+ends:
+  - se
+  - pe
+
+datasets:
+  - sim0
+  - sim4
+  - sim6
+
+genomes:
+  - CHM13
+
+read-lengths:
+  - 50
+  - 75
+  - 100
+  - 150
+  - 200
+  - 300
+  - 500
+
+# Programs to run in addition to strobealign
+programs:
+ - bwamem
+ - minimap2
+
+versions:
+  - commit: "caa3745f"
+    name: "strobealign randstrobes"
+    arguments: "--mcs=off"
+    color: "tab:green"
+
+  - commit: "caa3745f"
+    name: "strobealign-MCS"  # no need to specify --mcs=always as it is the default
+    color: "black"

@@ -1,0 +1,38 @@
+modes:
+  - map
+  - align
+
+ends:
+  - pe
+
+datasets:
+  - sim4
+
+genomes:
+  - fruitfly
+  - maize
+  - CHM13
+  - rye
+
+read-lengths:
+  - 50
+  - 75
+  - 100
+  - 150
+  - 200
+  - 300
+  - 500
+
+programs:
+ - bwamem
+ - minimap2
+
+versions:
+  - commit: "caa3745f"
+    name: "strobealign-MCS"
+    color: "black"
+
+  - commit: "caa3745f"
+    name: "strobealign randstrobes"
+    arguments: "--mcs=off"
+    color: "tab:green"
