@@ -79,7 +79,7 @@ def plot(
         kind="line",
         col="dataset",
         row=row,
-        facet_kws={"sharey": False},
+        facet_kws={"sharey": y == "time"},
         hue_order=tools,
         #col_order=["drosophila", "maize", "CHM13", "rye"],   # unused
         palette=palette,
@@ -114,11 +114,13 @@ def plot(
         g.set(xscale="log")
     if logscale:
         g.set(yscale="log")
-        g.set(
-            yticks=list(range(10, 99, 10))
-            + list(range(100, 999, 100))
-            + list(range(1000, 1999, 1000))
-        )  # + list(range(10000,39999,10000))
+        yticks = []
+        for m in [0.1, 1, 10, 100, 1000]:
+            yticks.extend(m * n for n in range(1, 10))
+        yticks.append(10000)
+        low, high = table[y].min(), table[y].max()
+        yticks = [t for t in yticks if low <= t <= high]
+        g.set(yticks=yticks)
 
     read_lengths = sorted(set(read_lengths) & set(table["read_length"]))
     # Multiplying by 1.001 prevents 100 (etc.) from being displayed as
