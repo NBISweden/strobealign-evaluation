@@ -25,7 +25,7 @@ function plot() {
   fi
 }
 
-test -e figures && rm -r figures
+#test -e figures && rm -r figures
 
 # Figures 2 and 3
 plot chm13 --nosim04 --genome

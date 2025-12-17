@@ -81,7 +81,7 @@ def plot(
         kind="line",
         col="dataset",
         row=row,
-        facet_kws={"sharey": y == "time"},
+        facet_kws={"sharey": y == "time", "legend_out": False},
         hue_order=tools,
         #col_order=["drosophila", "maize", "CHM13", "rye"],   # unused
         palette=palette,
@@ -102,7 +102,13 @@ def plot(
         legend_labels = [name for key, name in tools.items()]
 
     if legend == "right":
-        sns.move_legend(g, loc="right", labels=legend_labels)
+        sns.move_legend(
+            g,
+            loc="center left",
+            bbox_to_anchor=(1, 0.5),
+            labels=legend_labels,
+            frameon=False,
+        )
     elif legend == "below":
         sns.move_legend(
             g,
