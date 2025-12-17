@@ -26,6 +26,11 @@ programs:
 
 versions:
   - commit: "caa3745f"
+    name: "strobealign randstrobes"
+    arguments: "--mcs=off"
+    color: "tab:green"
+
+  - commit: "caa3745f"
     name: "strobealign-MCS"
     color: "black"
 

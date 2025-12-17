@@ -39,10 +39,10 @@ versions:
 #    arguments: "--mcs=off"
 #    color: "tab:green"
 
-  - commit: "caa3745f"
-    name: "strobealign-MCS-R"
-    arguments: "--mcs=rescue"
-    color: "plum"
+#  - commit: "caa3745f"
+#    name: "strobealign-MCS-R"
+#    arguments: "--mcs=rescue"
+#    color: "plum"
 
   - commit: "caa3745f"
     name: "strobealign k-mers"

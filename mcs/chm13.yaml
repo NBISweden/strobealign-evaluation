@@ -37,3 +37,8 @@ versions:
   - commit: "caa3745f"
     name: "strobealign-MCS"  # no need to specify --mcs=always as it is the default
     color: "black"
+
+  - commit: "caa3745f"
+    name: "strobealign-MCS “noisy”"
+    arguments: "-k 16 -s 12 -l 2 -u 2"
+    color: "red"

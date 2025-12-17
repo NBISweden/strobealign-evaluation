@@ -33,10 +33,15 @@ programs:
 
 versions:
   - commit: "caa3745f"
+    name: "strobealign randstrobes"
+    arguments: "--mcs=off"
+    color: "tab:green"
+
+  - commit: "caa3745f"
     name: "strobealign-MCS"
     color: "black"
 
   - commit: "caa3745f"
-    name: "strobealign randstrobes"
-    arguments: "--mcs=off"
-    color: "tab:green"
+    name: "strobealign-MCS “noisy”"
+    arguments: "-k 16 -s 12 -l 2 -u 2"
+    color: "red"
