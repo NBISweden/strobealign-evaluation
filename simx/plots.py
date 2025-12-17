@@ -89,6 +89,7 @@ def plot(
         clip_on=False,
         zorder=3,
     )
+
     g.figure.suptitle(title)
     g.set_axis_labels("Read length", label)
 
@@ -128,6 +129,15 @@ def plot(
     # Multiplying by 1.001 prevents 100 (etc.) from being displayed as
     # 10^2 in the tick labels
     xlim = (min(read_lengths), max(read_lengths) * 1.001)
+
+    # Fix a layout issue: If aligned percentage is very close to 100% for
+    # all data points, the scaling of the y-axis is weird
+    if y == "aligned":
+        for ax in g.axes_dict.values():
+            ylim = ax.get_ylim()
+            if ylim[0] >= 99.9:
+                ax.set_ylim((99.9, ylim[1]))
+
     g.set(xlim=xlim, xticks=read_lengths)
     g.set_xticklabels(rotation=90, labels=read_lengths)
     g.tight_layout()
