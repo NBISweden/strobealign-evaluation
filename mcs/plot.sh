@@ -36,10 +36,10 @@ plot xmapper --genome --solid
 mv figures/xmapper/genome-CHM13-accuracy.pdf figures/xmapper-CHM13-accuracy.pdf
 mv figures/xmapper/genome-CHM13-time.pdf figures/xmapper-CHM13-time.pdf
 
-# k-mer seed lookup strategy
-plot kmers --genome --solid
-mv figures/kmers/genome-CHM13-accuracy.pdf figures/kmers-CHM13-accuracy.pdf
-mv figures/kmers/genome-CHM13-time.pdf figures/kmers-CHM13-time.pdf
+# Seed seed lookup strategies
+plot strategies --genome --solid
+mv figures/strategies/genome-CHM13-accuracy.pdf figures/strategies-CHM13-accuracy.pdf
+mv figures/strategies/genome-CHM13-time.pdf figures/strategies-CHM13-time.pdf
 
 # Long reads
 plot longreads --solid --linear-x
