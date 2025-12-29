@@ -265,7 +265,7 @@ rule compile_strobealign_rs:
         unzip -d rstrobes-{wildcards.commit} {wildcards.commit}.zip
         rm {wildcards.commit}.zip
         cd rstrobes-{wildcards.commit}/*
-        cargo build --release
+        RUSTFLAGS='-C target-cpu=x86-64-v2' cargo build --release
         mv target/release/rstrobes ../../{output}
         cd ../..
         rm -rf rstrobes-{wildcards.commit}
