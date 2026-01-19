@@ -220,7 +220,7 @@ def plot_ends(df, outfolder, palette, datasets, read_lengths, tools, modes, xlog
                     legend=legend,
                 )
                 if pdf is not None and in_pdf:
-                    pdf.savefig()
+                    pdf.savefig(bbox_inches="tight")
                 if outfolder is not None:
                     fig.savefig(outfolder / f"ends-{ends}-{y}.pdf")
 
