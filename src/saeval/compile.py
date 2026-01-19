@@ -51,30 +51,46 @@ def compile_strobealign(commit_hash, binary, repository=DEFAULT_REPOSITORY):
         if subprocess.run(["git", "checkout", "--detach", commit_hash], cwd=compiledir).returncode != 0:
             raise CouldNotCheckout()
 
-        runc(
-            [
-                "cmake",
-                compiledir,
-                "-DCMAKE_RULE_MESSAGES=OFF",
-                "--log-level=NOTICE",
-                '-DCMAKE_C_FLAGS="-march=native"',
-                '-DCMAKE_CXX_FLAGS="-march=native"',
-                "-B",
-                Path(compiledir) / "build",
-            ]
-        )
-        runc(
-            [
-                "cmake",
-                "--build",
-                f"{compiledir}/build",
-                "-j",
-                "8",
-                "--target",
-                "strobealign",
-            ]
-        )
-        shutil.move(Path(compiledir) / "build" / "strobealign", binary)
+        if (Path(compiledir) / "Cargo.toml").exists():
+            compile_rust(compiledir, binary)
+        else:
+            compile_cpp(compiledir, binary)
+
+
+def compile_cpp(compiledir, binary):
+    runc(
+        [
+            "cmake",
+            compiledir,
+            "-DCMAKE_RULE_MESSAGES=OFF",
+            "--log-level=NOTICE",
+            '-DCMAKE_C_FLAGS="-march=native"',
+            '-DCMAKE_CXX_FLAGS="-march=native"',
+            "-B",
+            Path(compiledir) / "build",
+        ]
+    )
+    runc(
+        [
+            "cmake",
+            "--build",
+            f"{compiledir}/build",
+            "-j",
+            "8",
+            "--target",
+            "strobealign",
+        ]
+    )
+    shutil.move(Path(compiledir) / "build" / "strobealign", binary)
+
+
+def compile_rust(compiledir, binary):
+    subprocess.run(
+        ["cargo", "build", "--release"],
+        check=True,
+        cwd=compiledir,
+    )
+    shutil.move(Path(compiledir) / "target" / "release" / "strobealign", binary)
 
 
 def _currently_unused_make_short_hash(rev):
