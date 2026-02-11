@@ -405,10 +405,9 @@ rule build_mason:
 
 rule download_pbsim_models:
     output: "data/pbsim3/QSHMM-ONT-HQ.model", "data/pbsim3/QSHMM-RSII.model"
-    params:
-        outdir = "data/pbsim3"
     threads: 99
     shell:
-        "git clone https://github.com/yukiteruono/pbsim3"
-        "; mv pbsim3/data/* {params.outdir}"
-        "; rm -rf pbsim3"
+        "mkdir -p data/pbsim3"
+        "; cd data/pbsim3"
+        "; wget -O- https://github.com/yukiteruono/pbsim3/archive/refs/tags/v3.0.5.tar.gz"
+        " | tar xz --strip-components=2 pbsim3-3.0.5/data"
