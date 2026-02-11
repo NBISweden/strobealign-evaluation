@@ -28,11 +28,13 @@ DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=READ_LEN
 LONG_DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=LONG_READ_LENGTHS)
 ENDS = ("pe", "se")
 
+# sim3/4/5 were used in earlier studies, but to get a wider spread of
+# error/variation rates, we switched to sim0, sim4, sim6.
 VARIATION_SETTINGS = {
     "sim1": "",
-    "sim3": "--snp-rate 0.001 --small-indel-rate 0.0001 --max-small-indel-size 50",
+#    "sim3": "--snp-rate 0.001 --small-indel-rate 0.0001 --max-small-indel-size 50",
     "sim4": "--snp-rate 0.005 --small-indel-rate 0.0005 --max-small-indel-size 50",
-    "sim5": "--snp-rate 0.005 --small-indel-rate 0.001 --max-small-indel-size 100",
+#    "sim5": "--snp-rate 0.005 --small-indel-rate 0.001 --max-small-indel-size 100",
     "sim6": "--snp-rate 0.05 --small-indel-rate 0.002 --max-small-indel-size 100",
 }
 SIM = ["sim0"] + list(VARIATION_SETTINGS)
