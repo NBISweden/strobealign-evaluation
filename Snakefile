@@ -297,8 +297,6 @@ def pbsim_parameters(wildcards):
     depth = (num_reads * mean_read_length) / ref_len
     result += f" --depth {depth}"
 
-    if wildcards.sim == "hifi":
-        result += " --pass-num 10"
     return result
 
 
@@ -313,7 +311,6 @@ rule pbsim:
     params:
         extra=pbsim_parameters,
         outprefix="datasets/{sim}/{genome}-{long_read_length}/tmp",
-        outid="S"
     log: "logs/pbsim3/{sim}-{genome}-{long_read_length}.log"
     shell:
         "pbsim"
@@ -322,7 +319,7 @@ rule pbsim:
         " --method qshmm"
         " --qshmm {input.model}"
         " --prefix {params.outprefix}"
-        " --id-prefix {params.outid}"
+        " --id-prefix S"
         " {params.extra}"
         " --length-sd 0"
         "\ncat {params.outprefix}_*.fq.gz > {output.fastq}"
@@ -334,16 +331,15 @@ rule pbsim:
 
 rule pbsim_hifi:
     output:
-        maf="datasets/{sim,hifi}/{genome}-{long_read_length}/truth.maf.gz",
-        bam=temp("datasets/{sim,hifi}/{genome}-{long_read_length}/1.bam")
+        maf="datasets/hifi/{genome}-{long_read_length}/truth.maf.gz",
+        bam=temp("datasets/hifi/{genome}-{long_read_length}/1.bam")
     input:
         fasta="genomes/{genome}.fa",
-        model=lambda wildcards: MODELS[wildcards.sim]
+        model=MODELS["hifi"]
     params:
         extra=pbsim_parameters,
-        outprefix="datasets/{sim}/{genome}-{long_read_length}/tmp",
-        outid="S"
-    log: "logs/pbsim3/{sim,hifi}-{genome}-{long_read_length}.log"
+        outprefix="datasets/hifi/{genome}-{long_read_length}/tmp",
+    log: "logs/pbsim3/hifi-{genome}-{long_read_length}.log"
     shell:
         "pbsim"
         " --strategy wgs"
@@ -351,7 +347,8 @@ rule pbsim_hifi:
         " --method qshmm"
         " --qshmm {input.model}"
         " --prefix {params.outprefix}"
-        " --id-prefix {params.outid}"
+        " --id-prefix S"
+        " --pass-num 10"
         " {params.extra}"
         " --length-sd 0"
         "\ncat {params.outprefix}_*.maf.gz > {output.maf}"
