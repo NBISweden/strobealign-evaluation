@@ -302,15 +302,6 @@ def pbsim_parameters(wildcards):
     return result
 
 
-def pbsim_outprefix(wildcards):
-    return f"datasets/{wildcards.sim}/{wildcards.genome}-{wildcards.long_read_length}/tmp"
-
-def first_bam_name(wildcards):
-    if wildcards.sim == "hifi":
-        return pbsim_outprefix(wildcards) + "_0001.bam"
-    return []
-
-
 rule pbsim:
     output:
         maf="datasets/{sim,clr|ont}/{genome}-{long_read_length}/truth.maf.gz",
@@ -321,7 +312,7 @@ rule pbsim:
         model=lambda wildcards: MODELS[wildcards.sim]
     params:
         extra=pbsim_parameters,
-        outprefix=pbsim_outprefix,
+        outprefix="datasets/{sim}/{genome}-{long_read_length}/tmp",
         outid="S"
     log: "logs/pbsim3/{sim}-{genome}-{long_read_length}.log"
     shell:
@@ -350,7 +341,7 @@ rule pbsim_hifi:
         model=lambda wildcards: MODELS[wildcards.sim]
     params:
         extra=pbsim_parameters,
-        outprefix=pbsim_outprefix,
+        outprefix="datasets/{sim}/{genome}-{long_read_length}/tmp",
         outid="S"
     log: "logs/pbsim3/{sim,hifi}-{genome}-{long_read_length}.log"
     shell:
