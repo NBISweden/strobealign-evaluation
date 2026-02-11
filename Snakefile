@@ -285,17 +285,17 @@ rule sim0_long:
 
 def pbsim_parameters(wildcards):
     mean_read_length = int(wildcards.long_read_length)
-    result = "--length-mean {}".format(mean_read_length)
+    result = f"--length-mean {mean_read_length}"
 
-    reference_path = "genomes/" + wildcards.genome + ".fa"
+    fai_path = "genomes/" + wildcards.genome + ".fa.fai"
     ref_len = 0
-    with open(reference_path, "r") as ref:
-        for line in ref:
-            if not line.startswith('>'):
-                ref_len += len(line.strip())    
+    with open(fai_path) as f:
+        for line in f:
+            fields = line.split()
+            ref_len += int(fields[1])
     num_reads = N_READS[mean_read_length]
-    depth = float(num_reads * mean_read_length) / float(ref_len)
-    result += " --depth {}".format(depth)
+    depth = (num_reads * mean_read_length) / ref_len
+    result += f" --depth {depth}"
 
     if wildcards.sim == "hifi":
         result += " --pass-num 10"
@@ -317,6 +317,7 @@ rule pbsim:
         fastq="datasets/{sim,clr|ont}/{genome}-{long_read_length}/1.fastq.gz"
     input:
         fasta="genomes/{genome}.fa",
+        fai="genomes/{genome}.fa.fai",
         model=lambda wildcards: MODELS[wildcards.sim]
     params:
         extra=pbsim_parameters,
