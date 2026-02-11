@@ -161,7 +161,7 @@ def simulate_single_end_reads(fasta, n, read_length, error_rate):
 def main():
     parser = ArgumentParser()
     parser.add_argument("-n", type=int, default=1_000_000, help="No. of read pairs to simulate")
-    parser.add_argument("--error-rate", "-e", type=float, default=0, help="Error rate (only mismatches)")
+    parser.add_argument("--error-rate", "-e", type=float, default=0, help="Error rate (only mismatches). Default: %(default)s")
     parser.add_argument("--se", dest="paired", action="store_false", default=True, help="Simulate single-end reads")
     parser.add_argument("--mean-insert-size", type=int, default=500)
     parser.add_argument("--stddev-insert-size", type=int, default=30)
