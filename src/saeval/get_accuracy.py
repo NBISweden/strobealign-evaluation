@@ -523,7 +523,6 @@ def measure_accuracy(
     faidx: Path = None,
     ccs_names: bool = False,
     fastq: Path = None,
-    output_falsehq: bool = False
 ) -> Accuracy:
 
     if force_paf or predicted.name.endswith(".paf") or predicted.name.endswith(".paf.gz"):
