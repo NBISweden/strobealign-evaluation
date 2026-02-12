@@ -17,13 +17,13 @@ dependencies:
   - x-mapper=1.2.0
   - samtools=1.22
   - cmake=4.2
-  - cxx-compiler
+  - cxx-compiler=1.11.0
   - zlib
-  - seaborn
+  - seaborn=0.13.2
   - minimap2=2.30
   - isa-l
   - pyyaml
-  - pyfaidx
-  - pbsim3
-  - pbccs
-  - biopython
+  - pyfaidx=0.9.0.3
+  - pbsim3=3.0.5
+  - pbccs=6.4.0
+  - biopython=1.86
