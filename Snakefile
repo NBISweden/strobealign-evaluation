@@ -373,7 +373,7 @@ rule ccs:
     shell:
         """
         ulimit -n 16384
-        ccs --log-file {log} -j {threads} {input.bam} {output.fastq} 
+        unset TMPDIR; ccs --log-file {log} -j {threads} {input.bam} {output.fastq} 
         """
 
 # Misc
