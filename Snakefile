@@ -23,24 +23,27 @@ N_READS = {
 }
 LONG_READ_LENGTHS = tuple(n for n in N_READS if n >= 1000)  # single-end only
 READ_LENGTHS = tuple(n for n in N_READS if n < 1000)
+MODELS = {"clr": "data/pbsim3/QSHMM-RSII.model", "ont": "data/pbsim3/QSHMM-ONT-HQ.model", "hifi": "data/pbsim3/QSHMM-RSII.model"}
 DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=READ_LENGTHS)
 LONG_DATASETS = expand("{genome}-{read_length}", genome=GENOMES, read_length=LONG_READ_LENGTHS)
 ENDS = ("pe", "se")
 
+# sim3/4/5 were used in earlier studies, but to get a wider spread of
+# error/variation rates, we switched to sim0, sim4, sim6.
 VARIATION_SETTINGS = {
     "sim1": "",
-    "sim3": "--snp-rate 0.001 --small-indel-rate 0.0001 --max-small-indel-size 50",
+#    "sim3": "--snp-rate 0.001 --small-indel-rate 0.0001 --max-small-indel-size 50",
     "sim4": "--snp-rate 0.005 --small-indel-rate 0.0005 --max-small-indel-size 50",
-    "sim5": "--snp-rate 0.005 --small-indel-rate 0.001 --max-small-indel-size 100",
+#    "sim5": "--snp-rate 0.005 --small-indel-rate 0.001 --max-small-indel-size 100",
     "sim6": "--snp-rate 0.05 --small-indel-rate 0.002 --max-small-indel-size 100",
 }
-SIM = ["sim0", "sim1"] + list(VARIATION_SETTINGS)
+SIM = ["sim0"] + list(VARIATION_SETTINGS)
+LONG_SIM = ["ont", "hifi", "clr"]
 
 
 wildcard_constraints:
     read_length=r"\d{2,3}",
     long_read_length=r"\d{4,5}",
-    sim01=r"sim(0|0p1)"
 
 
 localrules:
@@ -51,7 +54,8 @@ rule:
     input:
         expand("datasets/{sim}/{ds}/{r}.fastq.gz", sim=SIM, ds=DATASETS, r=(1, 2)),
         expand("datasets/{sim}/{ds}/truth.bam", sim=SIM, ds=DATASETS + LONG_DATASETS),
-        expand("datasets/{sim}/{ds}/1.fastq.gz", sim=SIM, ds=LONG_DATASETS),
+        expand("datasets/{sim}/{ds}/1.fastq.gz", sim=SIM + LONG_SIM, ds=LONG_DATASETS),
+        expand("datasets/{sim}/{ds}/truth.maf.gz", sim=LONG_SIM, ds=LONG_DATASETS)
 
 # Download genomes
 
@@ -156,7 +160,7 @@ rule extract_chry:
 
 rule mason_variator:
     output:
-        vcf="variants/{sim}-{genome}.vcf"
+        vcf="variants/{sim,sim[1-9]}-{genome}.vcf"
     input:
         fasta="genomes/{genome}.fa",
         fai="genomes/{genome}.fa.fai",
@@ -249,37 +253,125 @@ def readsimulator_parameters(wildcards):
     return ""
 
 
-rule sim01:
+rule sim0:
     output:
-        r1_fastq="datasets/{sim01}/{genome}-{read_length}/1.fastq.gz",
-        r2_fastq="datasets/{sim01}/{genome}-{read_length}/2.fastq.gz",
-        bam="datasets/{sim01}/{genome}-{read_length}/truth.bam"
+        r1_fastq="datasets/sim0/{genome}-{read_length}/1.fastq.gz",
+        r2_fastq="datasets/sim0/{genome}-{read_length}/2.fastq.gz",
+        bam="datasets/sim0/{genome}-{read_length}/truth.bam"
     input:
         fasta="genomes/{genome}.fa",
     params:
         extra=readsimulator_parameters,
         n_reads=lambda wildcards: N_READS[int(wildcards.read_length)],
-        error_rate=lambda wildcards: {"sim0": 0.0, "sim0p1": 0.1}[wildcards.sim01]
     shell:
-        "python readsimulator.py{params.extra} -e {params.error_rate} -n {params.n_reads} --read-length {wildcards.read_length} {input.fasta} | samtools view -o {output.bam}.tmp.bam"
+        "python readsimulator.py{params.extra} -n {params.n_reads} --read-length {wildcards.read_length} {input.fasta} | samtools view -o {output.bam}.tmp.bam"
         "\nsamtools fastq -N -1 {output.r1_fastq} -2 {output.r2_fastq} {output.bam}.tmp.bam"
         "\nmv {output.bam}.tmp.bam {output.bam}"
 
 
-rule sim01_long:
+rule sim0_long:
     output:
-        fastq="datasets/{sim01}/{genome}-{long_read_length}/1.fastq.gz",
-        bam="datasets/{sim01}/{genome}-{long_read_length}/truth.bam"
+        fastq="datasets/sim0/{genome}-{long_read_length}/1.fastq.gz",
+        bam="datasets/sim0/{genome}-{long_read_length}/truth.bam"
     input:
         fasta="genomes/{genome}.fa",
     params:
         n_reads=lambda wildcards: N_READS[int(wildcards.long_read_length)],
-        error_rate=lambda wildcards: {"sim0": 0.0, "sim0p1": 0.1}[wildcards.sim01]
     shell:
-        "python readsimulator.py --se -e {params.error_rate} -n {params.n_reads} --read-length {wildcards.long_read_length} {input.fasta} | samtools view -o {output.bam}.tmp.bam"
+        "python readsimulator.py --se -n {params.n_reads} --read-length {wildcards.long_read_length} {input.fasta} | samtools view -o {output.bam}.tmp.bam"
         "\nsamtools fastq -N -0 {output.fastq} {output.bam}.tmp.bam"
         "\nmv {output.bam}.tmp.bam {output.bam}"
 
+
+def pbsim_parameters(wildcards):
+    mean_read_length = int(wildcards.long_read_length)
+    result = f"--length-mean {mean_read_length}"
+
+    fai_path = "genomes/" + wildcards.genome + ".fa.fai"
+    ref_len = 0
+    with open(fai_path) as f:
+        for line in f:
+            fields = line.split()
+            ref_len += int(fields[1])
+    num_reads = N_READS[mean_read_length]
+    depth = (num_reads * mean_read_length) / ref_len
+    result += f" --depth {depth}"
+
+    return result
+
+
+rule pbsim:
+    output:
+        maf="datasets/{sim,clr|ont}/{genome}-{long_read_length}/truth.maf.gz",
+        fastq="datasets/{sim,clr|ont}/{genome}-{long_read_length}/1.fastq.gz"
+    input:
+        fasta="genomes/{genome}.fa",
+        fai="genomes/{genome}.fa.fai",
+        model=lambda wildcards: MODELS[wildcards.sim]
+    params:
+        extra=pbsim_parameters,
+        outprefix="datasets/{sim}/{genome}-{long_read_length}/tmp",
+    log: "logs/pbsim3/{sim}-{genome}-{long_read_length}.log"
+    shell:
+        "pbsim"
+        " --strategy wgs"
+        " --genome {input.fasta}"
+        " --method qshmm"
+        " --qshmm {input.model}"
+        " --prefix {params.outprefix}"
+        " --id-prefix S"
+        " {params.extra}"
+        " --length-sd 0"
+        "\ncat {params.outprefix}_*.fq.gz > {output.fastq}"
+        "\ncat {params.outprefix}_*.maf.gz > {output.maf}"
+        "\nrm {params.outprefix}_*.ref"
+        "\nrm {params.outprefix}_*.maf.gz"
+        "\nrm {params.outprefix}_*.fq.gz"
+
+
+rule pbsim_hifi:
+    output:
+        maf="datasets/hifi/{genome}-{long_read_length}/truth.maf.gz",
+        bam=temp("datasets/hifi/{genome}-{long_read_length}/1.bam")
+    input:
+        fasta="genomes/{genome}.fa",
+        model=MODELS["hifi"]
+    params:
+        extra=pbsim_parameters,
+        outprefix="datasets/hifi/{genome}-{long_read_length}/tmp",
+    log: "logs/pbsim3/hifi-{genome}-{long_read_length}.log"
+    shell:
+        "pbsim"
+        " --strategy wgs"
+        " --genome {input.fasta}"
+        " --method qshmm"
+        " --qshmm {input.model}"
+        " --prefix {params.outprefix}"
+        " --id-prefix S"
+        " --pass-num 10"
+        " {params.extra}"
+        " --length-sd 0"
+        "\ncat {params.outprefix}_*.maf.gz > {output.maf}"
+        "\nrm {params.outprefix}_*.ref"
+        "\nrm {params.outprefix}_*.maf.gz"
+        "\nsamtools merge -o {output.bam} {params.outprefix}_*.bam"
+        "\nrm {params.outprefix}_*.bam"
+
+
+rule ccs:
+    output:
+        fastq="datasets/hifi/{genome}-{long_read_length}/1.fastq.gz"
+    input:
+        bam="datasets/hifi/{genome}-{long_read_length}/1.bam"
+    log:
+        "datasets/hifi/{genome}-{long_read_length}/ccs.log"
+    threads:
+        32
+    shell:
+        """
+        ulimit -n 16384
+        unset TMPDIR; ccs --log-file {log} -j {threads} {input.bam} {output.fastq} 
+        """
 
 # Misc
 
@@ -307,3 +399,13 @@ rule build_mason:
         "cmake --build build-seqan -j {threads}; "
         "mv build-seqan/bin/mason_simulator build-seqan/bin/mason_variator bin/"
         #"; rm -r seqan"
+
+
+rule download_pbsim_models:
+    output: "data/pbsim3/QSHMM-ONT-HQ.model", "data/pbsim3/QSHMM-RSII.model"
+    threads: 99
+    shell:
+        "mkdir -p data/pbsim3"
+        "; cd data/pbsim3"
+        "; wget -O- https://github.com/yukiteruono/pbsim3/archive/refs/tags/v3.0.5.tar.gz"
+        " | tar xz --strip-components=2 pbsim3-3.0.5/data"

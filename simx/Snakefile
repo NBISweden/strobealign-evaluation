@@ -25,8 +25,13 @@ if config["programs"]:
 PLOTS = ("accuracy", "aligned", "time", "memory")
 # For reads shorter than this, the evaluation includes paired-end data
 LONG_READ_LENGTH = 1000
+LONG_READ_DATASETS = ["ont", "clr", "hifi"]
 
 import itertools
+
+wildcard_constraints:
+    short_read_dataset=r"(?!clr|ont|hifi).*",
+    long_read_dataset=r"(clr|ont|hifi)"
 
 localrules:
     result_csv, concat_csvs, concat_genome_csvs, plot_ends, plot_genomes
@@ -105,7 +110,15 @@ def minimap2_profile(wildcards):
     minimap2’s sr (short reads) profile is advantageous up to
     approximately read length 500
     """
-    return "sr" if int(wildcards.read_length) <= 500 else "lr:hq"
+    if int(wildcards.read_length) <= 500:
+        return "sr"
+    if wildcards.dataset == "clr":
+        return "map-pb"
+    if wildcards.dataset == "ont":
+        return "map-ont"
+    if wildcards.dataset == "hifi":
+        return "map-hifi"
+    return "lr:hq"
 
 
 def minimap2_index(wildcards):
@@ -342,10 +355,10 @@ rule strobealign_paf_single_end:
 
 rule bam_accuracy:
     output:
-        txt="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.bam.accuracy.txt"
+        txt="runs/{program}/{short_read_dataset}-{genome}-{read_length}/{ends}.bam.accuracy.txt"
     input:
-        truth="datasets/{dataset}/{genome}-{read_length}/truth.bam",
-        bam="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.bam",
+        truth="datasets/{short_read_dataset}/{genome}-{read_length}/truth.bam",
+        bam="runs/{program}/{short_read_dataset}-{genome}-{read_length}/{ends}.bam",
     params:
         only_r1=lambda w: " --only-r1" if w.ends == "se" else "",
         extra=lambda w: " --multiple-primary --synthesize-unmapped" if w.program == "xmapper" else ""
@@ -356,15 +369,33 @@ rule bam_accuracy:
 
 rule paf_accuracy:
     output:
-        txt="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.accuracy.txt"
+        txt="runs/{program}/{short_read_dataset}-{genome}-{read_length}/{ends}.paf.accuracy.txt"
     input:
-        truth="datasets/{dataset}/{genome}-{read_length}/truth.bam",
-        paf="runs/{program}/{dataset}-{genome}-{read_length}/{ends}.paf.gz"
+        truth="datasets/{short_read_dataset}/{genome}-{read_length}/truth.bam",
+        paf="runs/{program}/{short_read_dataset}-{genome}-{read_length}/{ends}.paf.gz"
     params:
         only_r1=lambda w: " --only-r1" if w.ends == "se" else ""
     shell:
         "python -m saeval.get_accuracy{params.only_r1} --truth {input.truth} --predicted_paf {input.paf} > {output.txt}.tmp"
         "\n mv -v {output.txt}.tmp {output.txt}"
+
+
+rule lr_accuracy:
+    output:
+        txt="runs/{program}/{long_read_dataset}-{genome}-{read_length}/{ends}.paf.accuracy.txt"
+    input:
+        truth="datasets/{long_read_dataset}/{genome}-{read_length}/truth.maf.gz",
+        faidx="genomes/{genome}.fa.fai",
+        paf="runs/{program}/{long_read_dataset}-{genome}-{read_length}/{ends}.paf.gz",
+        fastq="datasets/{long_read_dataset}/{genome}-{read_length}/1.fastq.gz"
+    params:
+        only_r1=lambda w: " --only-r1" if w.ends == "se" else "",
+        ccs=lambda w: f" --ccs --fastq datasets/{w.long_read_dataset}/{w.genome}-{w.read_length}/1.fastq.gz" 
+            if w.long_read_dataset == "hifi" else ""
+    shell:
+        "python -m saeval.get_accuracy{params.only_r1} --truth {input.truth} --faidx {input.faidx} {params.ccs} --predicted_paf {input.paf} > {output.txt}.tmp"
+        "\n mv -v {output.txt}.tmp {output.txt}"
+
 
 rule count_reads_se:
     output:
@@ -419,16 +450,19 @@ def csvs(wildcards):
             if prog == "xmapper" and wildcards.genome == "rye":
                 # X-Mapper crashes on rye
                 continue
+            if dataset in LONG_READ_DATASETS:
+                continue
             files.append(f"csv/{prog}/{dataset}-{wildcards.genome}-{read_length}/{wildcards.ends}.bam.csv")
     if "map" in MODES:
-        if wildcards.ends == "se":
-               read_lengths = READ_LENGTHS
-        else:
-            read_lengths = [rl for rl in READ_LENGTHS if rl < LONG_READ_LENGTH]
-        files += expand(
-            f"csv/{{prog}}/{{dataset}}-{wildcards.genome}-{{read_length}}/{wildcards.ends}.paf.csv",
-            prog=(prog for prog in PROGRAMS if prog not in {"bwamem", "xmapper"}), dataset=DATASETS, read_length=read_lengths
-        )
+        datasets_lengths = []
+        for prog, dataset, read_length in itertools.product(PROGRAMS, DATASETS, READ_LENGTHS):
+            if read_length < LONG_READ_LENGTH and dataset in LONG_READ_DATASETS:
+                continue
+            if wildcards.ends == "pe":
+                if read_length >= LONG_READ_LENGTH or dataset in LONG_READ_DATASETS:
+                    continue
+            if prog not in {"bwamem", "xmapper"}:
+                files.append(f"csv/{prog}/{dataset}-{wildcards.genome}-{read_length}/{wildcards.ends}.paf.csv")
     return files
 
 

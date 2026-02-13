@@ -46,6 +46,11 @@ plot longreads --solid --linear-x
 mv figures/longreads/ends-se-time.pdf figures/longreads-time.pdf
 mv figures/longreads/ends-se-accuracy.pdf figures/longreads-accuracy.pdf
 
+# SIM1 and simulated HiFi reads
+plot hifi --linear-x
+mv figures/hifi/ends-se-accuracy.pdf figures/hifi-accuracy.pdf
+mv figures/hifi/ends-se-time.pdf figures/hifi-runtime.pdf
+
 # Full evaluation with all genomes
 plot allgenomes --nosim04
 mv figures/allgenomes/ends-se-accuracy.pdf figures/allgenomes-se-accuracy.pdf

@@ -3,7 +3,7 @@
 # Uncomment and change to use commits from a different repository
 # repository: "https://github.com/ksahlin/strobealign.git"
 
-mode:
+modes:
   - map
   - align
 

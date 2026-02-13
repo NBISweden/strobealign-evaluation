@@ -8,8 +8,9 @@ from pathlib import Path
 from itertools import zip_longest, groupby
 from dataclasses import dataclass
 
-from pysam import AlignmentFile
+from pysam import AlignmentFile, FastxFile
 from xopen import xopen
+from Bio import AlignIO
 
 CIGAR_MATCH = 0  # M
 CIGAR_INSERTION = 1  # I
@@ -119,6 +120,99 @@ def pick_random_primary_paired_end_iter(bam_iter):
             pairs = [(r1, r2) for (r1, r2) in pairs if r1.get_tag("AS") + r2.get_tag("AS") == best_score]
 
             yield from random.choice(pairs)
+
+
+def read_fastq(fastq_path: Path):
+    read_positions = {}
+    with FastxFile(fastq_path) as fastq_handle:
+        for read in fastq_handle:
+            gt_pattern = r'S(\d+)_(\d+)!(.*)!(\d+)!(\d+)!(\+|\-)'
+            match = re.search(gt_pattern, read.name)
+    
+            if not match:
+                raise ValueError(f"Could not parse read name: {read.name}, please make sure that input ground truth file was generated using pbsim2fq")
+            
+            _, _, ref_name, ref_start, ref_end, _ = match.groups()
+            if not read.name.endswith("/1"):
+                query_name = read.name + "/1"
+            read_positions[query_name] = ReferenceInterval(ref_name, int(ref_start), int(ref_end))
+    
+    return read_positions
+
+
+def parse_maf_alignment(alignment, consensus_names: dict, ref_index_to_name: dict, ccs_names: bool):
+    if len(alignment) != 2:
+        raise ValueError(f"{maf_path} should contain 2 alignments per entry, please make sure that it was produced by pbsim3")
+
+    ref_seq = None
+    read_seq = None
+
+    for seq_record in alignment:
+        if seq_record.id == "ref":
+            ref_seq = seq_record
+        elif seq_record.id.startswith("S"):
+            read_seq = seq_record
+
+    if ref_seq is None or read_seq is None:
+        raise ValueError(f"""{alignment} entry in {maf_path} should contain entries for \"ref\" 
+                                and \"S<>_<>\", please make sure that {maf_path} was produced by pbsim3""")
+
+    read_name = read_seq.id
+    ref_index = None
+    read_index = None
+    if not ccs_names:
+        match = re.match(r'S(\d+)_(\d+)', read_name)
+        if not match:
+            raise ValueError(f"Read name {read_name} does not match expected format S<reference_index>_<read id>")
+        ref_index = int(match.group(1))
+    else:
+        match = re.match(r'S(\d+)/(\d+)/(\d+)', read_name)
+        if not match:
+            raise ValueError(f"Read name {read_name} does not match expected format S<reference id>/<read id>/<pass id>")
+        ref_index = int(match.group(1))
+        read_index = int(match.group(2))
+    
+    if ref_index - 1 not in ref_index_to_name:
+        raise ValueError(f"Reference index {ref_index - 1} not found in reference index file")
+    ref_name = ref_index_to_name[ref_index - 1]
+
+    ref_start = ref_seq.annotations["start"]
+    ref_end = ref_start + ref_seq.annotations["size"]
+
+    if not ccs_names:
+        query_name = read_name
+    else:
+        query_name = f"S{ref_index}/{read_index}/ccs"
+        if query_name not in consensus_names:
+            return query_name, None
+    if not query_name.endswith("/1"):
+        query_name += "/1"
+
+    return query_name, ReferenceInterval(ref_name, ref_start, ref_end)
+
+
+def read_maf(maf_path: Path, ref_index_path: Path, fastq_path: Path, ccs_names: bool):
+    read_positions = {}
+
+    ref_index_to_name = {}
+    with open(ref_index_path) as fai_file:
+        for line_num, line in enumerate(fai_file):
+            ref_name = line.strip().split('\t')[0]
+            ref_index_to_name[line_num] = ref_name
+
+    consensus_names = None
+    if ccs_names:
+        with FastxFile(fastq_path) as fastq_file:
+            consensus_names = {read.name for read in fastq_file}
+
+    with xopen(maf_path) as maf_file:
+        alignments = AlignIO.parse(maf_file, "maf")
+        for alignment in alignments:
+            query_name, ref_interval = parse_maf_alignment(alignment, consensus_names, ref_index_to_name, ccs_names)
+            if query_name and ref_interval:
+                read_positions[query_name] = ref_interval
+
+    return read_positions
 
 
 def read_alignments(bam_path, skip_r2: bool):
@@ -426,10 +520,16 @@ def measure_accuracy(
     recompute_score: bool = False,
     multiple_primary: bool = False,
     synthesize_unmapped: bool = False,
+    faidx: Path = None,
+    ccs_names: bool = False,
+    fastq: Path = None,
 ) -> Accuracy:
 
     if force_paf or predicted.name.endswith(".paf") or predicted.name.endswith(".paf.gz"):
-        truth = read_alignments(truth, skip_r2)
+        if truth.name.endswith(".maf") or truth.name.endswith(".maf.gz"):
+            truth = read_maf(truth, faidx, fastq, ccs_names)
+        else:
+            truth = read_alignments(truth, skip_r2)
         predicted, mapped_to_multiple_pos = read_paf(predicted)
         result = get_stats(truth, predicted)
     else:
@@ -459,7 +559,10 @@ if __name__ == "__main__":
     parser.add_argument("--recompute-score", default=False, action="store_true", help="Recompute score in *predicted* BAM. Default: Use score from AS tag")
     parser.add_argument("--multiple-primary", default=False, action="store_true", help="Allow multiple primary alignments (violates SAM specification) and pick one randomly")
     parser.add_argument("--synthesize-unmapped", default=False, action="store_true", help="If an alignment is missing from predicted, assume the read is unmapped")
-    parser.add_argument("--truth", type=Path, help="True SAM/BAM")
+    parser.add_argument("--truth", type=Path, help="True SAM/BAM/MAF (if using pbsim3 ground truth)")
+    parser.add_argument("--faidx", type=Path, help="faidx of the reference genome (needed for MAF ground truth)")
+    parser.add_argument("--ccs", dest="ccs_names", action="store_true", help="Input reads are produced by ccs (needed for MAF ground truth)")
+    parser.add_argument("--fastq", type=Path, help="Consensus HiFi reads (if --ccs and MAF ground truth)")
     parser.add_argument("--predicted", "--predicted_sam", "--predicted_paf", type=Path, help="Predicted SAM/BAM/PAF")
     parser.add_argument("--paf", dest="force_paf", action="store_true", help="Assume PAF input for predicted (usually autodetected, only needed if reading PAF from stdin)")
     parser.add_argument("--outfile", help="Path to file")
