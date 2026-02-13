@@ -1,0 +1,30 @@
+# Pipeline configuration that reproduces Fig. S2 and S3
+# in "Multi-context seeds enable fast and high-accuracy read mapping" (2026)
+
+modes:
+  - map
+
+ends:
+  - se
+
+datasets:
+  - sim1
+  - hifi
+
+genomes:
+  - fruitfly
+  - maize
+  - CHM13
+  - rye
+
+read-lengths:
+  - 1000
+  - 5000
+  - 10000
+
+programs:
+
+versions:
+  - commit: "c99d3823"
+    color: "black"
+    name: "strobealign 0.17.0"
