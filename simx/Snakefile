@@ -15,7 +15,6 @@ for version in config.get("versions", []):
         "commit": version["commit"],
         "arguments": f" {arg}" if arg else "",
         "name": version["name"],
-        "color": version["color"],
         "binary": f"bin/strobealign/{version['commit']}",
     }
 

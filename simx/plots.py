@@ -161,11 +161,9 @@ def configure(config_path):
         "minimap2": "tab:blue",
         "bwamem": "tab:orange",
         "xmapper": "turquoise",
-        # "strobealign_v071": "tab:green",
-        # "strobealign_v0120_opt": "pink",
-        # "strobealign_multicontext": "black",
     }
 
+    available_colors = ["tab:green", "black", "tab:red", "tab:purple", "tab:pink", "tab:brown", "tab:gray"]
     read_lengths = [50, 75, 100, 150, 200, 300, 500]
     if config["read-lengths"] is not None:
         read_lengths = sorted(config["read-lengths"])
@@ -184,8 +182,16 @@ def configure(config_path):
         if arg := version.get("arguments", ""):
             key += "-" + arg.replace(" ", "").replace("-", "").replace("=", "")
         tools["strobealign-" + key] = version["name"]
+
         if "color" in version:
-            palette["strobealign-" + key] = version["color"]
+            color = version["color"]
+            try:
+                available_colors.remove(version["color"])
+            except ValueError:
+                pass
+        else:
+            color = available_colors.pop(0)
+        palette["strobealign-" + key] = color
 
     datasets = config["datasets"]
     modes = sorted(config.get("modes", ["align", "map"]))
