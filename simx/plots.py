@@ -199,6 +199,110 @@ def configure(config_path):
     return palette, datasets, read_lengths, tools, modes
 
 
+def plot_accuracy_table(table, tools, datasets, read_lengths, modes, title):
+    ds_colors = ["#aeeaea", "#ffd6a0", "#b5e8b5", "#d4b8e0", "#f9c8c8"]
+
+    filtered = table[table["dataset"].isin(datasets)]
+    filtered = filtered[filtered["mode"].isin(modes)]
+    filtered = filtered[filtered["read_length"].isin(read_lengths)]
+    filtered = filtered[filtered["tool"].isin(tools.keys())]
+
+    genomes = sorted(filtered["genome"].unique())
+    if not genomes:
+        return None
+
+    tool_keys = list(tools.keys())
+    tool_names = [tools[k] for k in tool_keys]
+    all_col_tuples = [(ds, rl) for ds in datasets for rl in sorted(read_lengths)]
+
+    cell_data = {
+        (genome, ds, rl, tk): (
+            filtered[(filtered["genome"] == genome) & (filtered["dataset"] == ds)
+                     & (filtered["read_length"] == rl) & (filtered["tool"] == tk)]["accuracy"].mean()
+            if not filtered[(filtered["genome"] == genome) & (filtered["dataset"] == ds)
+                            & (filtered["read_length"] == rl) & (filtered["tool"] == tk)].empty
+            else float("nan")
+        )
+        for genome in genomes for ds, rl in all_col_tuples for tk in tool_keys
+    }
+
+    col_tuples = [
+        (ds, rl) for ds, rl in all_col_tuples
+        if any(not pd.isna(cell_data[(g, ds, rl, tk)]) for g in genomes for tk in tool_keys)
+    ]
+    if not col_tuples:
+        return None
+
+    n_data_cols = len(col_tuples)
+    rows_per_genome = 2 + len(tool_keys)
+    fig_w = 1.2 + 2.8 + 0.62 * n_data_cols
+    fig_h = 0.28 * len(genomes) * rows_per_genome + 0.5
+
+    fig, ax = plt.subplots(figsize=(fig_w, fig_h))
+    ax.axis("off")
+    fig.suptitle(f"Accuracy (%) – {title}", fontsize=11, fontweight="bold")
+
+    ds_color = {ds: ds_colors[i % len(ds_colors)] for i, ds in enumerate(datasets)}
+    ds_first_col = {ds: min(ci for ci, (d, _) in enumerate(col_tuples) if d == ds) for ds in datasets if any(d == ds for d, _ in col_tuples)}
+
+    for gi, genome in enumerate(genomes):
+        block_top = fig_h - 0.35 - gi * rows_per_genome * 0.28
+        block_bottom = block_top - rows_per_genome * 0.28
+
+        best_per_col = {
+            ci: max((v for tk in tool_keys if not pd.isna(v := cell_data[(genome, ds, rl, tk)])), default=None)
+            for ci, (ds, rl) in enumerate(col_tuples)
+        }
+
+        def make_header_row(label_fn, bold_fn):
+            text   = ["", ""] + [label_fn(ci, ds, rl) for ci, (ds, rl) in enumerate(col_tuples)]
+            colors = ["#d0d0d0", "#e8e8e8"] + [ds_color[ds] for ds, rl in col_tuples]
+            bold   = [False, False] + [bold_fn(ci, ds, rl) for ci, (ds, rl) in enumerate(col_tuples)]
+            return text, colors, bold
+
+        sim_text, sim_colors, sim_bold = make_header_row(
+            lambda ci, ds, rl: ds if ds_first_col.get(ds) == ci else "",
+            lambda ci, ds, rl: True,
+        )
+        rl_text, rl_colors, rl_bold = make_header_row(
+            lambda ci, ds, rl: str(rl),
+            lambda ci, ds, rl: False,
+        )
+
+        data_rows = []
+        for ri, (tk, tname) in enumerate(zip(tool_keys, tool_names)):
+            text   = ["" if ri > 0 else genome, tname]
+            colors = ["#d0d0d0", "#e8e8e8"]
+            bold   = [ri == 0, False]
+            for ci, (ds, rl) in enumerate(col_tuples):
+                v = cell_data[(genome, ds, rl, tk)]
+                text.append(f"{v:.2f}" if not pd.isna(v) else "–")
+                colors.append("white")
+                bold.append(best_per_col[ci] is not None and not pd.isna(v) and abs(v - best_per_col[ci]) < 1e-9)
+            data_rows.append((text, colors, bold))
+
+        all_rows = [(sim_text, sim_colors, sim_bold), (rl_text, rl_colors, rl_bold)] + data_rows
+
+        mpl_table = ax.table(
+            cellText=[t for t, _, _ in all_rows],
+            cellColours=[c for _, c, _ in all_rows],
+            cellLoc="center",
+            colWidths=[1.2 / fig_w, 2.8 / fig_w] + [0.62 / fig_w] * n_data_cols,
+            bbox=[0.0, block_bottom / fig_h, 1.0, rows_per_genome * 0.28 / fig_h],
+        )
+        mpl_table.auto_set_font_size(False)
+        mpl_table.set_fontsize(8)
+
+        all_bold = [b for _, _, b in all_rows]
+        for (row_idx, col_idx), cell in mpl_table.get_celld().items():
+            cell.set_text_props(fontweight="bold" if all_bold[row_idx][col_idx] else "normal", fontsize=8)
+            if col_idx <= 1:
+                cell.get_text().set_ha("left")
+            cell.set_linewidth(0.5)
+
+    return fig
+
+
 def plot_ends(df, outfolder, palette, datasets, read_lengths, tools, modes, xlogscale, linewidth, solid, legend):
     with ExitStack() as stack:
         if outfolder is not None:
@@ -229,6 +333,11 @@ def plot_ends(df, outfolder, palette, datasets, read_lengths, tools, modes, xlog
                     pdf.savefig(bbox_inches="tight")
                 if outfolder is not None:
                     fig.savefig(outfolder / f"ends-{ends}-{y}.pdf")
+
+            acc_fig = plot_accuracy_table(table, tools, datasets, read_lengths, modes, title)
+            if acc_fig is not None:
+                if outfolder is not None:
+                    acc_fig.savefig(outfolder / f"ends-{ends}-accuracy-table.pdf", bbox_inches="tight")
 
 
 def plot_genomes(df, outfolder, palette, datasets, read_lengths, tools, modes, xlogscale, linewidth, solid, legend):
