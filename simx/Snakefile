@@ -486,7 +486,7 @@ rule plot_ends:
         csv="result.csv",
         config="config.yaml",
     shell:
-        "python plots.py -c {input.config} {input.csv} plots/"
+        "python -m saeval.plots -c {input.config} {input.csv} plots/"
 
 rule plot_genomes:
     output: expand("plots/genome-{genome}-{plot}.pdf", genome=GENOMES, plot=PLOTS)
@@ -494,4 +494,4 @@ rule plot_genomes:
         csv="result.csv",
         config="config.yaml",
     shell:
-        "python plots.py --genome -c {input.config} {input.csv} plots/"
+        "python -m saeval.plots --genome -c {input.config} {input.csv} plots/"
