@@ -142,7 +142,7 @@ def simulate_single_end_reads(fasta, n, read_length, error_rate):
             contig_length = len(fasta[contig])
             assert contig_length >= read_length
             name = f"simulated.{i+1}"
-            pos = random.randint(0, len(fasta[contig]) - read_length + 1)
+            pos = random.randint(0, len(fasta[contig]) - read_length)
             seq = fasta[contig][pos:pos+read_length].seq.upper()
             if seq.count("N") >= read_length / 10:
                 continue
