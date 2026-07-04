@@ -26,6 +26,8 @@ def parse_log(log) -> Runtimes:
                 threads = int(line.split()[1])
             elif line.startswith("Mapping threads:"):
                 threads = int(line.split()[2])
+            elif line.startswith("Processing reads using"):
+                threads = int(line.split()[3])
     return Runtimes(
         user_time=user_time,
         memory_mib=memory_mib,
@@ -33,4 +35,3 @@ def parse_log(log) -> Runtimes:
         mapping_time=mapping_time,
         threads=threads,
     )
-

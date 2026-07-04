@@ -93,10 +93,10 @@ def compile_rust(compiledir, binary):
     shutil.move(Path(compiledir) / "target" / "release" / "strobealign", binary)
 
 
-def _currently_unused_make_short_hash(rev):
+def make_short_hash(repo: Path, rev):
     result = runc(
         ["git", "rev-parse", "--short", f"{rev}^0"],
-        cwd="strobealign",
+        cwd=repo,
         capture_output=True,
         text=True,
     )
