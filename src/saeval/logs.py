@@ -28,6 +28,8 @@ def parse_log(log) -> Runtimes:
                 threads = int(line.split()[2])
             elif line.startswith("Processing reads using"):
                 threads = int(line.split()[3])
+            elif line.startswith("Processing reads in mapping-only mode using"):
+                threads = int(line.split()[6])
     return Runtimes(
         user_time=user_time,
         memory_mib=memory_mib,

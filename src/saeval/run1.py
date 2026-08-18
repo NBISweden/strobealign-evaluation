@@ -128,7 +128,7 @@ def parse_library_tag(tag: str) -> Library:
     return Library(ends=ends, dataset=dataset, genome=genome, read_length=read_length)
 
 
-def read_config(path: Path | None = None):
+def read_config(path: Path | None = None) -> Configuration:
     """
     Read saeval configuration.
 

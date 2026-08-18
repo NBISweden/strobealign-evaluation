@@ -3,6 +3,7 @@
 Compile a given commit of strobealign and store the binary in bin/ (or where
 specified with -o)
 """
+import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import shutil
@@ -85,22 +86,26 @@ def compile_cpp(compiledir, binary):
 
 
 def compile_rust(compiledir, binary):
+    env = os.environ
+    if "RUSTFLAGS" not in env:
+        env["RUSTFLAGS"] = "-C target-cpu=x86-64-v2"
     subprocess.run(
         ["cargo", "build", "--release"],
         check=True,
         cwd=compiledir,
+        env=env,
     )
     shutil.move(Path(compiledir) / "target" / "release" / "strobealign", binary)
 
 
 def make_short_hash(repo: Path, rev):
     result = runc(
-        ["git", "rev-parse", "--short", f"{rev}^0"],
+        ["git", "rev-parse", f"{rev}^0"],
         cwd=repo,
         capture_output=True,
         text=True,
     )
-    short_hash = result.stdout.strip()
+    short_hash = result.stdout.strip()[:8]
     return short_hash
 
 
