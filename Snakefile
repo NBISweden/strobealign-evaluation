@@ -53,6 +53,7 @@ localrules:
 rule:
     input:
         expand("datasets/{sim}/{ds}/{r}.fastq.gz", sim=SIM, ds=DATASETS, r=(1, 2)),
+        expand("datasets/{sim}/{ds}/{ends}.readcount.txt", sim=SIM, ds=DATASETS, ends=("se", "pe")),
         expand("datasets/{sim}/{ds}/truth.bam", sim=SIM, ds=DATASETS + LONG_DATASETS),
         expand("datasets/{sim}/{ds}/1.fastq.gz", sim=SIM + LONG_SIM, ds=LONG_DATASETS),
         expand("datasets/{sim}/{ds}/truth.maf.gz", sim=LONG_SIM, ds=LONG_DATASETS)
@@ -374,6 +375,23 @@ rule ccs:
         """
 
 # Misc
+
+rule count_reads_se:
+    output:
+        txt="datasets/{dataset}/{genome}-{read_length}/se.readcount.txt",
+    input:
+        fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz"
+    shell:
+        "echo $[ $(zcat {input.fastq} | wc -l) / 4 ] > {output}"
+
+rule count_reads_pe:
+    output:
+        txt="datasets/{dataset}/{genome}-{read_length}/pe.readcount.txt",
+    input:
+        fastq="datasets/{dataset}/{genome}-{read_length}/1.fastq.gz"
+    shell:
+        "echo $[ $(zcat {input.fastq} | wc -l) / 2 ] > {output}"
+
 
 rule samtools_faidx:
     output: "{genome}.fa.fai"
