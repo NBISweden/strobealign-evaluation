@@ -3,9 +3,17 @@
 /datasets/
 /downloads/
 /genomes/
+/logs/
 /strobealign-combined/
 /strobealign-min/
 /strobealign-max/
 /variants/
 /simx/results/
 /simx/bin/
+/simx/runs/
+/simx/csv/
+/tmp/
+/mcs/runs/
+/seqan/
+/.snakemake/
+/build/seqan/
