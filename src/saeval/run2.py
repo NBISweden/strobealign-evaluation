@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
 Benchmark two strobealign commits against each other
+
+Alternatively, benchmark different command-line arguments against each other
 """
 
 import itertools
@@ -32,7 +34,7 @@ from .run1 import (
 
 logger = logging.getLogger(__name__)
 
-GENOMES = ["fruitfly", "maize" "CHM13", "chrY", "rye"]
+GENOMES = ["fruitfly", "maize", "CHM13", "chrY", "rye"]
 DATASETS = ["sim4", "sim6", "sim0"]
 READ_LENGTHS = [50, 100, 150, 200, 300, 500, 1000, 5000, 10000]
 
@@ -45,6 +47,14 @@ def main():
         type=Path,
         help="Path to saeval configuration file. "
         "Default: $XDG_CONFIG_HOME/saeval/config.toml or ~/.config/saeval/config.toml",
+    )
+    parser.add_argument(
+        "--args1",
+        help="Arguments to pass to first strobealign commit. "
+        'Write as --args1= (with an "=") like this: --args1="--arg1=value --arg2=value"',
+    )
+    parser.add_argument(
+        "--args2", help="Arguments to pass to second strobealign commit"
     )
     parser.add_argument(
         "commit1", help="First commit (can also be a tag or branch name)"
@@ -61,20 +71,33 @@ def main():
     run(**vars(args))
 
 
-def run(commit1: str, commit2: str | None, config: Path):
+def run(
+    commit1: str,
+    commit2: str | None,
+    config: Path,
+    args1: str | None,
+    args2: str | None,
+):
     config = read_config(config)
     logger.debug("Configuration: %s", config)
 
     if commit2 is None:
         commit1, commit2 = get_merge_base(Path(config.repository), commit1), commit1
 
-    logger.info("Comparing commit %s to %s", commit1, commit2)
-
     # Compile
     programs = [
         make_program(commit, binary_dir=config.binaries, repository=config.repository)
         for commit in [commit1, commit2]
     ]
+    logger.info("Comparing commit %s to %s", commit1, commit2)
+    if args1 or args2:
+        logger.info(
+            "Command-line arguments: '%s' vs '%s'",
+            args1 if args1 else "",
+            args2 if args2 else "",
+        )
+        args1 = args1.split() if args1 else []
+        args2 = args2.split() if args2 else []
 
     modes = [Mode.MAP, Mode.ALIGN]
     libraries = make_libraries()
@@ -96,8 +119,8 @@ def run(commit1: str, commit2: str | None, config: Path):
     n = 0
     for mode, library in itertools.product(modes, libraries):
         accuracies, runtimes = [], []
-        for program in programs:
-            accuracy, runtime = run_one_library(program, config, library, mode)
+        for program, args in zip(programs, [args1, args2]):
+            accuracy, runtime = run_one_library(program, args, config, library, mode)
             accuracies.append(accuracy)
             runtimes.append(runtime)
 
@@ -142,6 +165,7 @@ def make_libraries() -> list[Library]:
                         ends=Ends.SE,
                     )
                 )
+
     return libraries
 
 

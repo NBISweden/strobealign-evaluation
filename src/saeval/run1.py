@@ -91,7 +91,8 @@ def main():
     logger.debug("Library: %s", library)
     read_count = read_read_count(config, library)
 
-    accuracy, runtime = run_one_library(program, config, library, mode)
+    args = []
+    accuracy, runtime = run_one_library(program, args, config, library, mode)
 
     logger.debug("Accuracy: %s", accuracy)
     logger.debug("Runtime: %s", runtime)
@@ -183,6 +184,7 @@ def read_read_count(config: Configuration, library: Library) -> int:
 
 def run_one_library(
     program: Program,
+    args: list[str] | None,
     config: Configuration,
     library: Library,
     mode: Mode,
@@ -203,8 +205,14 @@ def run_one_library(
 
     # Outputs
     libname = f"{library.dataset}-{library.genome}-{library.read_length}"
-    outdir = config.results / f"strobealign-{program.commit}" / libname
+    key = program.commit
+    if args:
+        # Normalize
+        key += "-" + "".join(arg.replace("-", "").replace("=", "") for arg in args)
 
+    outdir = config.results / f"strobealign-{key}" / libname
+
+    logger.debug("Output directory: %s", outdir)
     ends = library.ends
     if mode == Mode.MAP:
         log_txt = outdir / f"{ends}.paf.log"
@@ -219,7 +227,14 @@ def run_one_library(
         outdir.mkdir(parents=True, exist_ok=True)
         if not outpath.exists() or not log_txt.exists():
             run_strobealign(
-                program.binary, ref, reads, outpath, log_txt, mode, config.threads
+                program.binary,
+                ref,
+                reads,
+                outpath,
+                log_txt,
+                mode,
+                config.threads,
+                extra_args=args,
             )
         assert outpath.exists() and log_txt.exists()
         logger.debug("Getting accuracy")
