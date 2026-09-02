@@ -181,23 +181,25 @@ def run(
     speedup_sum = 0.0
     n = 0
     for mode, library in itertools.product(modes, libraries):
-        accuracies, runtimes = [], []
-        for program, args in zip(programs, [args1, args2]):
-            accuracy, runtime = run_one_library(program, args, config, library, mode)
-            accuracies.append(accuracy)
-            runtimes.append(runtime)
-
-        n += 1
-        accuracy_diff_sum += acc(accuracies[1]) - acc(accuracies[0])
-        speedup = runtimes[0].mapping_time / runtimes[1].mapping_time
-        speedup_sum += speedup
         library_name = f"{library.genome}-{library.read_length}"
-
-        cols = [
+        print(
             "map  " if mode == Mode.MAP else "align",
             f"{library.ends}-{library.dataset}-{library_name}".ljust(22),
-            f"{acc(accuracies[0]):9.3f}",
-            f"{acc(accuracies[1]) - acc(accuracies[0]):9.4f}",
+            sep=sep,
+            end=sep
+        )
+        sys.stdout.flush()
+        accuracy1, runtime1 = run_one_library(programs[0], args1, config, library, mode)
+        print(f"{acc(accuracy1):9.3f}", end=sep)
+        sys.stdout.flush()
+
+        accuracy2, runtime2 = run_one_library(programs[1], args2, config, library, mode)
+        n += 1
+        accuracy_diff_sum += acc(accuracy2) - acc(accuracy1)
+        speedup = runtime1.mapping_time / runtime2.mapping_time
+        speedup_sum += speedup
+        cols = [
+            f"{acc(accuracy2) - acc(accuracy1):9.4f}",
             f"{speedup:6.2f}×",
         ]
         if not markdown:
