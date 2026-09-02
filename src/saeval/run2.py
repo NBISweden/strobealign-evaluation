@@ -59,6 +59,12 @@ def main():
         "Default: $XDG_CONFIG_HOME/saeval/config.toml or ~/.config/saeval/config.toml",
     )
     parser.add_argument(
+        "--markdown",
+        default=False,
+        action="store_true",
+        help="Output table in Markdown format",
+    )
+    parser.add_argument(
         "--accuracy",
         type=AccuracyMethod,
         default=AccuracyMethod.overlap,
@@ -104,6 +110,7 @@ def run(
     args2: str | None,
     accuracy: AccuracyMethod,
     modes: list[Mode],
+    markdown: bool,
 ):
     config = read_config(config)
     logger.debug("Configuration: %s", config)
@@ -116,7 +123,7 @@ def run(
         make_program(commit, binary_dir=config.binaries, repository=config.repository)
         for commit in [commit1, commit2]
     ]
-    logger.info("Comparing commit %s to %s", commit1, commit2)
+    logger.info("Comparing commit %s to %s\n", commit1, commit2)
     if args1 or args2:
         logger.info(
             "Command-line arguments: '%s' vs '%s'",
@@ -138,18 +145,26 @@ def run(
         col = "jaccuracy"
         acc = lambda a: a.jaccard_correct
 
-    print(
-        "dataset",
-        f"{'library':14}",
-        "ends",
-        "mode",
-        col,
-        f"{col}_diff",
+    if markdown:
+        sep = " | "
+    else:
+        sep = "\t"
+
+    cols = [
+        "mode ",
+        f"{'library':22}",
+        f"{col} (%)",
+        f"∆{col}",
         "speedup",
-        f"avg_{col}_diff",
-        "avg_speedup",
-        sep="\t",
-    )
+    ]
+    if not markdown:
+        cols += [
+            f"avg_∆{col}",
+            "avg_speedup",
+        ]
+    print(*cols, sep=sep)
+    if markdown:
+        print("-|-|-:|-:|-:")
     accuracy_diff_sum = 0.0
     speedup_sum = 0.0
     n = 0
@@ -165,19 +180,22 @@ def run(
         speedup = runtimes[0].mapping_time / runtimes[1].mapping_time
         speedup_sum += speedup
         library_name = f"{library.genome}-{library.read_length}"
-        print(
-            library.dataset,
-            f"{library_name:14}",
-            library.ends,
+
+        cols = [
             "map  " if mode == Mode.MAP else "align",
+            f"{library.ends}-{library.dataset}-{library_name}".ljust(22),
             f"{acc(accuracies[0]):9.3f}",
             f"{acc(accuracies[1]) - acc(accuracies[0]):9.4f}",
-            f"{speedup:6.2f}",
-            f"{accuracy_diff_sum / n:+.6f}",
-            f"{speedup_sum / n:6.3f}",
-            sep="\t",
-        )
+            f"{speedup:6.2f}×",
+        ]
+        if not markdown:
+            cols += [
+                f"{accuracy_diff_sum / n:+.6f}",
+                f"{speedup_sum / n:6.3f}",
+            ]
+        print(*cols, sep=sep)
 
+    print()
     print("Average accuracy change:", f"{accuracy_diff_sum / n:+.6f}", file=sys.stderr)
 
     # TODO remove output file
