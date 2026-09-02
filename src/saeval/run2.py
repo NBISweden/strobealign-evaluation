@@ -5,6 +5,7 @@ Benchmark two strobealign commits against each other
 Alternatively, benchmark different command-line arguments against each other
 """
 
+from enum import Enum
 import itertools
 import subprocess
 
@@ -39,6 +40,15 @@ DATASETS = ["sim4", "sim6", "sim0"]
 READ_LENGTHS = [50, 100, 150, 200, 300, 500, 1000, 5000, 10000]
 
 
+class AccuracyMethod(Enum):
+    overlap = "overlap"
+    jaccard = "jaccard"
+    score = "score"
+
+    def __str__(self):
+        return self.value
+
+
 def main():
     parser = ArgumentParser()
     parser.add_argument("--debug", action="store_true", default=False)
@@ -47,6 +57,13 @@ def main():
         type=Path,
         help="Path to saeval configuration file. "
         "Default: $XDG_CONFIG_HOME/saeval/config.toml or ~/.config/saeval/config.toml",
+    )
+    parser.add_argument(
+        "--accuracy",
+        type=AccuracyMethod,
+        default=AccuracyMethod.overlap,
+        choices=list(AccuracyMethod),
+        help="Accuracy computation method. Default: overlap",
     )
     parser.add_argument("--mode", dest="modes", choices=["map", "align"])
     parser.add_argument(
@@ -85,6 +102,7 @@ def run(
     config: Path,
     args1: str | None,
     args2: str | None,
+    accuracy: AccuracyMethod,
     modes: list[Mode],
 ):
     config = read_config(config)
@@ -110,15 +128,25 @@ def run(
 
     libraries = make_libraries()
 
+    if accuracy is AccuracyMethod.overlap:
+        col = "accuracy"
+        acc = lambda a: a.correct
+    elif accuracy is AccuracyMethod.score:
+        col = "saccuracy"
+        acc = lambda a: a.score_correct
+    elif accuracy is AccuracyMethod.jaccard:
+        col = "jaccuracy"
+        acc = lambda a: a.jaccard_correct
+
     print(
         "dataset",
         f"{'library':14}",
         "ends",
         "mode",
-        "accuracy",
-        "accuracy_diff",
+        col,
+        f"{col}_diff",
         "speedup",
-        "avg_accuracy_diff",
+        f"avg_{col}_diff",
         "avg_speedup",
         sep="\t",
     )
@@ -133,7 +161,7 @@ def run(
             runtimes.append(runtime)
 
         n += 1
-        accuracy_diff_sum += accuracies[1].correct - accuracies[0].correct
+        accuracy_diff_sum += acc(accuracies[1]) - acc(accuracies[0])
         speedup = runtimes[0].mapping_time / runtimes[1].mapping_time
         speedup_sum += speedup
         library_name = f"{library.genome}-{library.read_length}"
@@ -142,8 +170,8 @@ def run(
             f"{library_name:14}",
             library.ends,
             "map  " if mode == Mode.MAP else "align",
-            f"{accuracies[0].correct:9.3f}",
-            f"{accuracies[1].correct - accuracies[0].correct:9.4f}",
+            f"{acc(accuracies[0]):9.3f}",
+            f"{acc(accuracies[1]) - acc(accuracies[0]):9.4f}",
             f"{speedup:6.2f}",
             f"{accuracy_diff_sum / n:+.6f}",
             f"{speedup_sum / n:6.3f}",
