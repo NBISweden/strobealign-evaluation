@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 
 
@@ -24,6 +25,10 @@ def parse_log(log) -> Runtimes:
                 indexing_time = float(line.split()[3])
             elif "Total time mapping:" in line:
                 mapping_time = float(line.split()[3])
+            elif match := re.fullmatch("Mapping: *(.*) s\n$", line):
+                mapping_time = float(match.group(1))
+            elif match := re.fullmatch("Reading or creating index: *(.*) s\n$", line):
+                indexing_time = float(match.group(1))
             elif line.startswith("Reads:"):
                 reads = int(line.split()[1])
             elif line.startswith("Threads:"):
