@@ -48,6 +48,7 @@ def main():
         help="Path to saeval configuration file. "
         "Default: $XDG_CONFIG_HOME/saeval/config.toml or ~/.config/saeval/config.toml",
     )
+    parser.add_argument("--mode", dest="modes", choices=["map", "align"])
     parser.add_argument(
         "--args1",
         help="Arguments to pass to first strobealign commit. "
@@ -66,6 +67,13 @@ def main():
         help="Second commit. If not provided, compare merge base of main and commit1 to commit1",
     )
     args = parser.parse_args()
+    if args.modes == "map":
+        modes = [Mode.MAP]
+    elif args.modes == "align":
+        modes = [Mode.ALIGN]
+    else:
+        modes = [Mode.MAP, Mode.ALIGN]
+    args.modes = modes
     logging.basicConfig(format="%(message)s", level="DEBUG" if args.debug else "INFO")
     del args.debug
     run(**vars(args))
@@ -77,6 +85,7 @@ def run(
     config: Path,
     args1: str | None,
     args2: str | None,
+    modes: list[Mode],
 ):
     config = read_config(config)
     logger.debug("Configuration: %s", config)
@@ -99,7 +108,6 @@ def run(
         args1 = args1.split() if args1 else []
         args2 = args2.split() if args2 else []
 
-    modes = [Mode.MAP, Mode.ALIGN]
     libraries = make_libraries()
 
     print(
