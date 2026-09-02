@@ -204,29 +204,7 @@ class Job:
         Return the results for this job (accuracy and runtime), running the job
         if necessary.
         """
-
-        # Inputs
-        libdir = (
-            self.config.datasets / self.library.dataset / f"{self.library.genome}-{self.library.read_length}"
-        )
-        ref = self.config.genomes / f"{self.library.genome}.fa"
-        reads = [libdir / "1.fastq.gz"]
-        if self.library.ends == Ends.PE:
-            reads.append(libdir / "2.fastq.gz")
-        truth = libdir / "truth.bam"
-        if not truth.exists():
-            raise FileNotFoundError(f"Truth {truth} not available")
-        if not ref.exists():
-            raise FileNotFoundError(f"Reference FASTA {ref} not found")
-
-        # Outputs
-        libname = f"{self.library.dataset}-{self.library.genome}-{self.library.read_length}"
-        key = self.program.commit
-        if self.args:
-            # Normalize
-            key += "-" + "".join(arg.replace("-", "").replace("=", "") for arg in self.args)
-
-        outdir = self.config.results / f"strobealign-{key}" / libname
+        outdir = self._outdir()
 
         logger.debug("Output directory: %s", outdir)
         ends = self.library.ends
@@ -240,6 +218,19 @@ class Job:
             accuracy_txt = outdir / f"{ends}.bam.accuracy.txt"
 
         if not log_txt.exists() or not accuracy_txt.exists():
+            libdir = (
+                self.config.datasets / self.library.dataset / f"{self.library.genome}-{self.library.read_length}"
+            )
+            ref = self.config.genomes / f"{self.library.genome}.fa"
+            reads = [libdir / "1.fastq.gz"]
+            if self.library.ends == Ends.PE:
+                reads.append(libdir / "2.fastq.gz")
+            truth = libdir / "truth.bam"
+            if not truth.exists():
+                raise FileNotFoundError(f"Truth {truth} not available")
+            if not ref.exists():
+                raise FileNotFoundError(f"Reference FASTA {ref} not found")
+
             outdir.mkdir(parents=True, exist_ok=True)
             if not outpath.exists() or not log_txt.exists():
                 run_strobealign(
@@ -255,17 +246,26 @@ class Job:
             assert outpath.exists() and log_txt.exists()
             logger.debug("Getting accuracy")
             accuracy = measure_accuracy(
-                truth=truth, predicted=outpath, skip_r2=ends == Ends.SE
+                truth=truth, predicted=outpath, skip_r2=self.library.ends == Ends.SE
             )
             with open(accuracy_txt, mode="w") as f:
                 print(*accuracy.percentages().row(), sep="\t", file=f)
 
         logger.debug("Reading %s", accuracy_txt)
-
         accuracy = parse_accuracy(accuracy_txt)
         runtime = parse_log(log_txt)
 
         return accuracy, runtime
+
+
+    def _outdir(self) -> Path:
+        libname = f"{self.library.dataset}-{self.library.genome}-{self.library.read_length}"
+        key = self.program.commit
+        if self.args:
+            # Normalize
+            key += "-" + "".join(arg.replace("-", "").replace("=", "") for arg in self.args)
+
+        return self.config.results / f"strobealign-{key}" / libname
 
 
 def run_strobealign(
