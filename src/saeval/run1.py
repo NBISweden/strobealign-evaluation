@@ -92,7 +92,7 @@ def main():
     read_count = read_read_count(config, library)
 
     args = []
-    accuracy, runtime = run_one_library(program, args, config, library, mode)
+    accuracy, runtime = Job(program, args, config, library, mode).run()
 
     logger.debug("Accuracy: %s", accuracy)
     logger.debug("Runtime: %s", runtime)
@@ -182,74 +182,90 @@ def read_read_count(config: Configuration, library: Library) -> int:
     return read_count
 
 
-def run_one_library(
-    program: Program,
-    args: list[str] | None,
-    config: Configuration,
-    library: Library,
-    mode: Mode,
-):
-    # Inputs
-    libdir = (
-        config.datasets / library.dataset / f"{library.genome}-{library.read_length}"
-    )
-    ref = config.genomes / f"{library.genome}.fa"
-    reads = [libdir / "1.fastq.gz"]
-    if library.ends == Ends.PE:
-        reads.append(libdir / "2.fastq.gz")
-    truth = libdir / "truth.bam"
-    if not truth.exists():
-        raise FileNotFoundError(f"Truth {truth} not available")
-    if not ref.exists():
-        raise FileNotFoundError(f"Reference FASTA {ref} not found")
+class Job:
+    """
+    A single run of strobealign
+    """
+    def __init__(self,
+        program: Program,
+        args: list[str] | None,
+        config: Configuration,
+        library: Library,
+        mode: Mode,
+    ):
+        self.program = program
+        self.args = args
+        self.config = config
+        self.library = library
+        self.mode = mode
 
-    # Outputs
-    libname = f"{library.dataset}-{library.genome}-{library.read_length}"
-    key = program.commit
-    if args:
-        # Normalize
-        key += "-" + "".join(arg.replace("-", "").replace("=", "") for arg in args)
+    def run(self) -> (float, float):
+        """
+        Return the results for this job (accuracy and runtime), running the job
+        if necessary.
+        """
 
-    outdir = config.results / f"strobealign-{key}" / libname
-
-    logger.debug("Output directory: %s", outdir)
-    ends = library.ends
-    if mode == Mode.MAP:
-        log_txt = outdir / f"{ends}.paf.log"
-        outpath = outdir / f"{ends}.paf.gz"
-        accuracy_txt = outdir / f"{ends}.paf.accuracy.txt"
-    else:
-        log_txt = outdir / f"{ends}.bam.log"
-        outpath = outdir / f"{ends}.bam"
-        accuracy_txt = outdir / f"{ends}.bam.accuracy.txt"
-
-    if not log_txt.exists() or not accuracy_txt.exists():
-        outdir.mkdir(parents=True, exist_ok=True)
-        if not outpath.exists() or not log_txt.exists():
-            run_strobealign(
-                program.binary,
-                ref,
-                reads,
-                outpath,
-                log_txt,
-                mode,
-                config.threads,
-                extra_args=args,
-            )
-        assert outpath.exists() and log_txt.exists()
-        logger.debug("Getting accuracy")
-        accuracy = measure_accuracy(
-            truth=truth, predicted=outpath, skip_r2=ends == Ends.SE
+        # Inputs
+        libdir = (
+            self.config.datasets / self.library.dataset / f"{self.library.genome}-{self.library.read_length}"
         )
-        with open(accuracy_txt, mode="w") as f:
-            print(*accuracy.percentages().row(), sep="\t", file=f)
+        ref = self.config.genomes / f"{self.library.genome}.fa"
+        reads = [libdir / "1.fastq.gz"]
+        if self.library.ends == Ends.PE:
+            reads.append(libdir / "2.fastq.gz")
+        truth = libdir / "truth.bam"
+        if not truth.exists():
+            raise FileNotFoundError(f"Truth {truth} not available")
+        if not ref.exists():
+            raise FileNotFoundError(f"Reference FASTA {ref} not found")
 
-    logger.debug("Reading %s", accuracy_txt)
+        # Outputs
+        libname = f"{self.library.dataset}-{self.library.genome}-{self.library.read_length}"
+        key = self.program.commit
+        if self.args:
+            # Normalize
+            key += "-" + "".join(arg.replace("-", "").replace("=", "") for arg in self.args)
 
-    accuracy = parse_accuracy(accuracy_txt)
-    runtime = parse_log(log_txt)
+        outdir = self.config.results / f"strobealign-{key}" / libname
 
-    return accuracy, runtime
+        logger.debug("Output directory: %s", outdir)
+        ends = self.library.ends
+        if self.mode == Mode.MAP:
+            log_txt = outdir / f"{ends}.paf.log"
+            outpath = outdir / f"{ends}.paf.gz"
+            accuracy_txt = outdir / f"{ends}.paf.accuracy.txt"
+        else:
+            log_txt = outdir / f"{ends}.bam.log"
+            outpath = outdir / f"{ends}.bam"
+            accuracy_txt = outdir / f"{ends}.bam.accuracy.txt"
+
+        if not log_txt.exists() or not accuracy_txt.exists():
+            outdir.mkdir(parents=True, exist_ok=True)
+            if not outpath.exists() or not log_txt.exists():
+                run_strobealign(
+                    self.program.binary,
+                    ref,
+                    reads,
+                    outpath,
+                    log_txt,
+                    self.mode,
+                    self.config.threads,
+                    extra_args=self.args,
+                )
+            assert outpath.exists() and log_txt.exists()
+            logger.debug("Getting accuracy")
+            accuracy = measure_accuracy(
+                truth=truth, predicted=outpath, skip_r2=ends == Ends.SE
+            )
+            with open(accuracy_txt, mode="w") as f:
+                print(*accuracy.percentages().row(), sep="\t", file=f)
+
+        logger.debug("Reading %s", accuracy_txt)
+
+        accuracy = parse_accuracy(accuracy_txt)
+        runtime = parse_log(log_txt)
+
+        return accuracy, runtime
 
 
 def run_strobealign(

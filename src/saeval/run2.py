@@ -30,7 +30,7 @@ from .run1 import (
     Ends,
     read_config,
     make_program,
-    run_one_library,
+    Job,
 )
 
 logger = logging.getLogger(__name__)
@@ -189,11 +189,11 @@ def run(
             end=sep
         )
         sys.stdout.flush()
-        accuracy1, runtime1 = run_one_library(programs[0], args1, config, library, mode)
+        accuracy1, runtime1 = Job(programs[0], args1, config, library, mode).run()
         print(f"{acc(accuracy1):9.3f}", end=sep)
         sys.stdout.flush()
 
-        accuracy2, runtime2 = run_one_library(programs[1], args2, config, library, mode)
+        accuracy2, runtime2 = Job(programs[1], args2, config, library, mode).run()
         n += 1
         accuracy_diff_sum += acc(accuracy2) - acc(accuracy1)
         speedup = runtime1.mapping_time / runtime2.mapping_time
