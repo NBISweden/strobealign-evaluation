@@ -203,22 +203,16 @@ def run(
 
 def make_libraries() -> list[Library]:
     libraries = []
-    for dataset in DATASETS:
-        for genome in GENOMES:
-            for read_length in READ_LENGTHS:
-                # TODO
-                if not (
-                    Path("datasets") / dataset / f"{genome}-{read_length}" / "truth.bam"
-                ).exists():
-                    continue
-                libraries.append(
-                    Library(
-                        dataset=dataset,
-                        genome=genome,
-                        read_length=read_length,
-                        ends=Ends.SE,
-                    )
-                )
+    all = itertools.product(DATASETS, GENOMES, READ_LENGTHS)
+    for dataset, genome, read_length in all:
+        libraries.append(
+            Library(
+                dataset=dataset,
+                genome=genome,
+                read_length=read_length,
+                ends=Ends.SE,
+            )
+        )
 
     return libraries
 
