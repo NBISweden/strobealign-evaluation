@@ -8,10 +8,12 @@ class Runtimes:
     indexing_time: float
     mapping_time: float  # This is what we usually report
     threads: int
+    reads: int  # Number of reads
 
 
 def parse_log(log) -> Runtimes:
     # user_time = memory_mib = indexing_time = mapping_time = threads = None
+    reads = None
     with open(log) as f:
         for line in f:
             if "User time (seconds)" in line:
@@ -22,6 +24,8 @@ def parse_log(log) -> Runtimes:
                 indexing_time = float(line.split()[3])
             elif "Total time mapping:" in line:
                 mapping_time = float(line.split()[3])
+            elif line.startswith("Reads:"):
+                reads = int(line.split()[1])
             elif line.startswith("Threads:"):
                 threads = int(line.split()[1])
             elif line.startswith("Mapping threads:"):
@@ -30,10 +34,12 @@ def parse_log(log) -> Runtimes:
                 threads = int(line.split()[3])
             elif line.startswith("Processing reads in mapping-only mode using"):
                 threads = int(line.split()[6])
+
     return Runtimes(
         user_time=user_time,
         memory_mib=memory_mib,
         indexing_time=indexing_time,
         mapping_time=mapping_time,
         threads=threads,
+        reads=reads,
     )

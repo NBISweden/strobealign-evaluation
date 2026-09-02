@@ -89,7 +89,6 @@ def main():
     mode = Mode.ALIGN if args.mode == "align" else Mode.MAP
 
     logger.debug("Library: %s", library)
-    read_count = read_read_count(config, library)
 
     args = []
     accuracy, runtime = Job(program, args, config, library, mode).run()
@@ -106,7 +105,7 @@ def main():
         library.genome,
         library.ends,
         library.read_length,
-        read_count,
+        runtime.reads,
         accuracy.aligned,
         accuracy.overmapped,
         accuracy.correct,
@@ -199,7 +198,7 @@ class Job:
         self.library = library
         self.mode = mode
 
-    def run(self) -> (float, float):
+    def run(self):
         """
         Return the results for this job (accuracy and runtime), running the job
         if necessary.
@@ -252,7 +251,7 @@ class Job:
 
         return self.get()
 
-    def get(self) -> (float, float):
+    def get(self):
         """
         Retrieve the measurements from the cache. Raise FileNotFoundError if no
         measurements have been made.
