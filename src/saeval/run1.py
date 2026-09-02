@@ -207,56 +207,61 @@ class Job:
         outdir = self._outdir()
 
         logger.debug("Output directory: %s", outdir)
-        ends = self.library.ends
-        if self.mode == Mode.MAP:
-            log_txt = outdir / f"{ends}.paf.log"
-            outpath = outdir / f"{ends}.paf.gz"
-            accuracy_txt = outdir / f"{ends}.paf.accuracy.txt"
-        else:
-            log_txt = outdir / f"{ends}.bam.log"
-            outpath = outdir / f"{ends}.bam"
-            accuracy_txt = outdir / f"{ends}.bam.accuracy.txt"
+        try:
+            return self.get()
+        except FileNotFoundError:
+            pass
 
-        if not log_txt.exists() or not accuracy_txt.exists():
-            libdir = (
-                self.config.datasets / self.library.dataset / f"{self.library.genome}-{self.library.read_length}"
+        libdir = (
+            self.config.datasets / self.library.dataset / f"{self.library.genome}-{self.library.read_length}"
+        )
+        ref = self.config.genomes / f"{self.library.genome}.fa"
+        reads = [libdir / "1.fastq.gz"]
+        if self.library.ends == Ends.PE:
+            reads.append(libdir / "2.fastq.gz")
+        truth = libdir / "truth.bam"
+        if not truth.exists():
+            raise FileNotFoundError(f"Truth {truth} not available")
+        if not ref.exists():
+            raise FileNotFoundError(f"Reference FASTA {ref} not found")
+
+        outdir = self._outdir()
+        ext = "paf.gz" if self.mode == Mode.MAP else "bam"
+        outpath = outdir / f"{self.library.ends}.{ext}"
+
+        log_txt = self._log_path()
+        outdir.mkdir(parents=True, exist_ok=True)
+        if not outpath.exists() or not log_txt.exists():
+            run_strobealign(
+                self.program.binary,
+                ref,
+                reads,
+                outpath,
+                log_txt,
+                self.mode,
+                self.config.threads,
+                extra_args=self.args,
             )
-            ref = self.config.genomes / f"{self.library.genome}.fa"
-            reads = [libdir / "1.fastq.gz"]
-            if self.library.ends == Ends.PE:
-                reads.append(libdir / "2.fastq.gz")
-            truth = libdir / "truth.bam"
-            if not truth.exists():
-                raise FileNotFoundError(f"Truth {truth} not available")
-            if not ref.exists():
-                raise FileNotFoundError(f"Reference FASTA {ref} not found")
+        assert outpath.exists() and log_txt.exists()
+        logger.debug("Getting accuracy")
+        accuracy = measure_accuracy(
+            truth=truth, predicted=outpath, skip_r2=self.library.ends == Ends.SE
+        )
+        with open(self._accuracy_path(), mode="w") as f:
+            print(*accuracy.percentages().row(), sep="\t", file=f)
 
-            outdir.mkdir(parents=True, exist_ok=True)
-            if not outpath.exists() or not log_txt.exists():
-                run_strobealign(
-                    self.program.binary,
-                    ref,
-                    reads,
-                    outpath,
-                    log_txt,
-                    self.mode,
-                    self.config.threads,
-                    extra_args=self.args,
-                )
-            assert outpath.exists() and log_txt.exists()
-            logger.debug("Getting accuracy")
-            accuracy = measure_accuracy(
-                truth=truth, predicted=outpath, skip_r2=self.library.ends == Ends.SE
-            )
-            with open(accuracy_txt, mode="w") as f:
-                print(*accuracy.percentages().row(), sep="\t", file=f)
+        return self.get()
 
-        logger.debug("Reading %s", accuracy_txt)
-        accuracy = parse_accuracy(accuracy_txt)
-        runtime = parse_log(log_txt)
+    def get(self) -> (float, float):
+        """
+        Retrieve the measurements from the cache. Raise FileNotFoundError if no
+        measurements have been made.
+        """
+        accuracy = parse_accuracy(self._accuracy_path())
+        runtime = parse_log(self._log_path())
+        logger.debug("Read accuracy from %s", self._accuracy_path())
 
         return accuracy, runtime
-
 
     def _outdir(self) -> Path:
         libname = f"{self.library.dataset}-{self.library.genome}-{self.library.read_length}"
@@ -266,6 +271,14 @@ class Job:
             key += "-" + "".join(arg.replace("-", "").replace("=", "") for arg in self.args)
 
         return self.config.results / f"strobealign-{key}" / libname
+
+    def _accuracy_path(self) -> Path:
+        ext = "paf" if self.mode == Mode.MAP else "bam"
+        return self._outdir() / f"{self.library.ends}.{ext}.accuracy.txt"
+
+    def _log_path(self) -> Path:
+        ext = "paf" if self.mode == Mode.MAP else "bam"
+        return self._outdir() / f"{self.library.ends}.{ext}.log"
 
 
 def run_strobealign(
