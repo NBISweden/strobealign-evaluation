@@ -377,7 +377,7 @@ def recompute_alignment_score(segment, scores) -> int:
     md_tag = segment.get_tag("MD")
     md = [
         parse_int_or_not(e)
-        for e in re.split("([A-Z]|^[A-Z]+|[0-9]+)", md_tag)
+        for e in re.split(r"([A-Z]|\^[A-Z]+|[0-9]+)", md_tag)
         if e != ""
     ]
     score = 0
