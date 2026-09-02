@@ -23,9 +23,9 @@ logger = logging.getLogger(__name__)
 DEFAULT_THREADS = 8
 
 
-class Mode(Enum):
-    ALIGN = 0
-    MAP = 1
+class Mode(StrEnum):
+    ALIGN = "align"
+    MAP = "map"
 
 
 class Ends(StrEnum):
@@ -262,14 +262,17 @@ class Job:
 
         return accuracy, runtime
 
-    def _outdir(self) -> Path:
-        libname = f"{self.library.dataset}-{self.library.genome}-{self.library.read_length}"
+    def tool_tag(self) -> str:
         key = self.program.commit
         if self.args:
             # Normalize
             key += "-" + "".join(arg.replace("-", "").replace("=", "") for arg in self.args)
+        return f"strobealign-{key}"
 
-        return self.config.results / f"strobealign-{key}" / libname
+    def _outdir(self) -> Path:
+        libname = f"{self.library.dataset}-{self.library.genome}-{self.library.read_length}"
+
+        return self.config.results / self.tool_tag() / libname
 
     def _accuracy_path(self) -> Path:
         ext = "paf" if self.mode == Mode.MAP else "bam"
