@@ -210,7 +210,8 @@ def run(
         print(*cols, sep=sep)
 
     print()
-    print("Average accuracy change:", f"{accuracy_diff_sum / n:+.6f}", file=sys.stderr)
+    print(f"Average accuracy change: {accuracy_diff_sum / n:+.6f}", file=sys.stderr)
+    print(f"Average speedup: {speedup_sum / n:6.3f}", file=sys.stderr)
 
     # TODO remove output file
 
