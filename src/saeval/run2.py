@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 GENOMES = ["fruitfly", "maize", "CHM13", "chrY", "rye"]
 DATASETS = ["sim4", "sim6", "sim0"]
 READ_LENGTHS = [50, 100, 150, 200, 300, 500, 1000, 5000, 10000]
+LONG_READ_LENGTH = 1000  # no paired-end
 
 
 class AccuracyMethod(Enum):
@@ -72,6 +73,7 @@ def main():
         help="Accuracy computation method. Default: overlap",
     )
     parser.add_argument("--mode", dest="modes", choices=["map", "align"])
+    parser.add_argument("--ends", dest="ends", choices=["se", "pe"])
     parser.add_argument(
         "--args1",
         help="Arguments to pass to first strobealign commit. "
@@ -97,6 +99,15 @@ def main():
     else:
         modes = [Mode.MAP, Mode.ALIGN]
     args.modes = modes
+
+    if args.ends == "se":
+        ends = [Ends.SE]
+    elif args.ends == "pe":
+        ends = [Ends.PE]
+    else:
+        ends = [Ends.SE, Ends.PE]
+    args.ends = ends
+
     logging.basicConfig(format="%(message)s", level="DEBUG" if args.debug else "INFO")
     del args.debug
     run(**vars(args))
@@ -110,6 +121,7 @@ def run(
     args2: str | None,
     accuracy: AccuracyMethod,
     modes: list[Mode],
+    ends: list[Ends],
     markdown: bool,
 ):
     config = read_config(config)
@@ -133,7 +145,7 @@ def run(
         args1 = args1.split() if args1 else []
         args2 = args2.split() if args2 else []
 
-    libraries = make_libraries()
+    libraries = make_libraries(ends)
 
     if accuracy is AccuracyMethod.overlap:
         col = "accuracy"
@@ -201,16 +213,18 @@ def run(
     # TODO remove output file
 
 
-def make_libraries() -> list[Library]:
+def make_libraries(ends_list: list[Ends]) -> list[Library]:
     libraries = []
-    all = itertools.product(DATASETS, GENOMES, READ_LENGTHS)
-    for dataset, genome, read_length in all:
+    all = itertools.product(ends_list, DATASETS, GENOMES, READ_LENGTHS)
+    for ends, dataset, genome, read_length in all:
+        if ends == Ends.PE and read_length >= LONG_READ_LENGTH:
+            continue
         libraries.append(
             Library(
                 dataset=dataset,
                 genome=genome,
                 read_length=read_length,
-                ends=Ends.SE,
+                ends=ends,
             )
         )
 
