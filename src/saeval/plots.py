@@ -163,7 +163,7 @@ def configure(config_path):
         "xmapper": "turquoise",
     }
 
-    available_colors = ["tab:green", "black", "tab:red", "tab:purple", "tab:pink", "tab:brown", "tab:gray"]
+    available_colors = ["tab:green", "black", "tab:red", "tab:purple", "magenta", "gold", "tab:pink", "tab:brown", "tab:gray", "turquoise", "tab:olive"]
     read_lengths = [50, 75, 100, 150, 200, 300, 500]
     if config["read-lengths"] is not None:
         read_lengths = sorted(config["read-lengths"])
