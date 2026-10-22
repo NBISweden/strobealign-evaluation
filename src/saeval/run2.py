@@ -78,6 +78,8 @@ def main():
     )
     parser.add_argument("--mode", dest="modes", choices=["map", "align"])
     parser.add_argument("--ends", dest="ends", choices=["se", "pe"])
+    parser.add_argument("--name1", help="Label for first run in plots")
+    parser.add_argument("--name2", help="Label for second run in plots")
     parser.add_argument(
         "--args1",
         help="Arguments to pass to first strobealign commit. "
@@ -123,6 +125,8 @@ def run(
     config: Path,
     args1: str | None,
     args2: str | None,
+    name1: str | None,
+    name2: str | None,
     accuracy: AccuracyMethod,
     modes: list[Mode],
     ends: list[Ends],
@@ -134,6 +138,8 @@ def run(
 
     if commit2 is None:
         commit1, commit2 = get_merge_base(Path(config.repository), commit1), commit1
+        if name1 is None:
+            name1 = "merge base"
 
     # Compile
     programs = [
@@ -224,11 +230,23 @@ def run(
     print(f"Average speedup: {speedup_sum / n:6.3f}", file=sys.stderr)
 
     if plot:
+        print("Plotting", plot)
         import pandas as pd
 
         df = pd.DataFrame(rows)
-        print(df.to_csv(index=False))
-        plot_ends_to_pdf(df, plot)
+        # print(df.to_csv(index=False))
+        shorttag1 = job1.tool_tag().removeprefix("strobealign-")
+        shorttag2 = job2.tool_tag().removeprefix("strobealign-")
+        if name1 is None:
+            name1 = shorttag1
+        else:
+            name1 = f"{name1} ({shorttag1})"
+        if name2 is None:
+            name2 = shorttag2
+        else:
+            name2 = f"{name2} ({shorttag2})"
+        tools = {job1.tool_tag(): name1, job2.tool_tag(): name2}
+        plot_ends_to_pdf(df, plot, tools)
 
     # TODO remove output file
 
@@ -285,7 +303,7 @@ def get_merge_base(repo: Path, commit: str) -> str:
     return base
 
 
-def plot_ends_to_pdf(df, path):
+def plot_ends_to_pdf(df, path, tools):
     import seaborn as sns
     import matplotlib
     from matplotlib.backends.backend_pdf import PdfPages
@@ -300,8 +318,6 @@ def plot_ends_to_pdf(df, path):
     modes = sorted(set(df["mode"]))
     datasets = sorted(set(df["dataset"]))
     read_lengths = sorted(set(df["read_length"]))
-    tools = {tag: tag.removeprefix("strobealign-") for tag in sorted(set(df["tool"]))}
-
     palette = {
         df["tool"][0]: "tab:green",
         df["tool"][1]: "black",
