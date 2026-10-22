@@ -8,7 +8,17 @@
 # - ecoli50 (fifty E. coli genomes)
 # - chrY (chromosome Y of CHM13)
 
-GENOMES = ("fruitfly", "maize", "CHM13", "rye", "chrY")
+GENOMES = ("fruitfly", "maize", "CHM13", "GRCh38", "rye", "chrY", "GRCh38")
+REF_LENGTHS = {
+    "fruitfly": 139451378,
+    "maize":   2182075994,
+    "blueflax": 748792343,
+    "CHM13":   3117292070,
+    "GRCh38":  3099922541,
+    "rye":     7287855879,
+    "chrY":      62460029,
+    "ecoli50": 247020385,
+}
 N_READS = {
     50: 1_000_000,
     75: 1_000_000,
@@ -75,6 +85,11 @@ rule download_chm13:
     shell:
         "curl https://s3-us-west-2.amazonaws.com/human-pangenomics/T2T/CHM13/assemblies/analysis_set/chm13v2.0.fa.gz > {output}"
 
+rule download_grch38:
+    output: "downloads/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz"
+    shell:
+        "curl https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz > {output}"
+
 rule download_rye:
     output: "downloads/GCA_016097815.1_HAU_Weining_v1.0_genomic.fna.gz"
     shell:
@@ -125,6 +140,21 @@ rule uncompress_chm13:
     input: rules.download_chm13.output
     shell:
         "zcat {input} > {output}"
+
+rule filter_grch38:
+    output: "genomes/GRCh38.fa"
+    input: rules.download_grch38.output
+    shell:
+        """
+        zcat {input} > {output}.tmp.fa
+        samtools faidx {output}.tmp.fa
+        # Discard contigs shorter than 16 kbp
+        awk '$2>=16000 {{print $1}}' {output}.tmp.fa.fai > {output}.tmp.regions.txt
+        samtools faidx -r {output}.tmp.regions.txt {output}.tmp.fa > {output}.tmp2.fa
+        mv {output}.tmp2.fa {output}
+
+        rm {output}.tmp.fa {output}.tmp.fa.fai {output}.tmp.regions.txt
+        """
 
 rule filter_rye:
     output: temp("genomes/rye_raw.fa")
@@ -288,12 +318,7 @@ def pbsim_parameters(wildcards):
     mean_read_length = int(wildcards.long_read_length)
     result = f"--length-mean {mean_read_length}"
 
-    fai_path = "genomes/" + wildcards.genome + ".fa.fai"
-    ref_len = 0
-    with open(fai_path) as f:
-        for line in f:
-            fields = line.split()
-            ref_len += int(fields[1])
+    ref_len = REF_LENGTHS[wildcards.genome]
     num_reads = N_READS[mean_read_length]
     depth = (num_reads * mean_read_length) / ref_len
     result += f" --depth {depth}"
