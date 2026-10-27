@@ -38,8 +38,8 @@ from .plots import plot as saeval_plot, MEASUREMENT_TYPES
 
 logger = logging.getLogger(__name__)
 
-GENOMES = ["blueflax", "fruitfly", "maize", "CHM13", "rye", "chrY"]
-DATASETS = ["sim6", "sim0", "sim4", "sim6"]
+GENOMES = ["fruitfly", "blueflax", "maize", "CHM13", "GRCh38", "rye", "chrY"]
+DATASETS = ["sim0", "sim4", "sim6"]
 READ_LENGTHS = [50, 100, 150, 200, 300, 500, 1000, 5000, 10000]
 LONG_READ_LENGTH = 1000  # no paired-end
 
@@ -69,6 +69,7 @@ def main():
         help="Output table in Markdown format",
     )
     parser.add_argument("--plot", type=Path, metavar="PDF", help="Plot results to PDF")
+    parser.add_argument("--fast", action="store_true", help="Run only a subset of libraries")
     parser.add_argument(
         "--accuracy",
         type=AccuracyMethod,
@@ -132,6 +133,7 @@ def run(
     ends: list[Ends],
     markdown: bool,
     plot: Path | None,
+    fast: bool,
 ):
     config = read_config(config)
     logger.debug("Configuration: %s", config)
@@ -156,7 +158,34 @@ def run(
         args1 = args1.split() if args1 else []
         args2 = args2.split() if args2 else []
 
-    libraries = make_libraries(ends)
+    full_libraries = make_libraries(ends)
+
+    for genomes_subset in [("blueflax", ), ("blueflax", "CHM13")]:
+        small_libraries = [
+            lib
+            for lib in full_libraries
+            if lib.genome in genomes_subset and lib.dataset != "sim0" and lib.read_length not in (200, 500)
+        ]
+        run_libraries(small_libraries, programs, config, args1, args2, name1, name2, accuracy, modes, ends, markdown, plot)
+
+    if not fast:
+        run_libraries(full_libraries, programs, config, args1, args2, name1, name2, accuracy, modes, ends, markdown, plot)
+
+
+def run_libraries(
+    libraries,
+    programs,
+    config: Path,
+    args1: str | None,
+    args2: str | None,
+    name1: str | None,
+    name2: str | None,
+    accuracy: AccuracyMethod,
+    modes: list[Mode],
+    ends: list[Ends],
+    markdown: bool,
+    plot: Path | None,
+):
 
     if accuracy is AccuracyMethod.overlap:
         col = "accuracy"
